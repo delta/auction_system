@@ -89,3 +89,8 @@ $ npm run fmt
 ## Reporting Issues
 
 If you think you've found a bug, or something isn't behaving the way you think it should, please raise an [issue](https://github.com/adarshPatel509/auction_system/issues) on GitHub.
+
+# Contributing
+
+Read our [Contribution Guidelines](https://github.com/adarshPatel509/auction_system/blob/master/CONTRIBUTING.md) for information on how you can help out BingeBond.
+
