@@ -19,10 +19,12 @@
     "ejs": "^2.7.1",
     "express": "^4.16.2",
     "file-loader": "^4.2.0",
+    "mysql2": "^2.0.0",
     "react": "^16.3.1",
     "react-dom": "^16.6.0",
     "react-router": "^5.1.2",
     "react-router-dom": "^5.1.2",
+    "sequelize": "^5.21.2",
     "url-loader": "^2.2.0"
   },
   "devDependencies": {
