@@ -1,0 +1,16 @@
+<html>
+    <head>
+        <meta charSet="utf-8"/>
+        <meta content="initial-scale=1,width=device-width" name="viewport"/>
+        <link rel="stylesheet" href="/assets/app/css/main.css">
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+
+        <title>Auction System</title>
+    </head>
+    <body>
+        <div id="content"></div>
+        <% for (var i = 0; i < scripts.length; i++) { %>
+        <script type="text/javascript" src=<%= scripts[i] %>></script>
+        <% } %>
+    </body>
+</html>
