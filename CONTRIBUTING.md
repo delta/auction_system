@@ -30,4 +30,4 @@ Bug fixes are welcome and should come with appropriate test coverage.
 
 ### License
 
-By contributing to Auction System, you agree that your contributions will be licensed under its MIT license.
+By contributing to Auction System, you agree that your contributions will be licensed under its Apache License, Version 2.0..

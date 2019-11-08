@@ -94,3 +94,7 @@ If you think you've found a bug, or something isn't behaving the way you think i
 
 Read our [Contribution Guidelines](https://github.com/adarshPatel509/auction_system/blob/dev/CONTRIBUTING.md) for information on how you can help out Auction-System.
 
+# Licensing
+
+Auction System is licensed under the Apache License, Version 2.0. See [LICENSE](https://github.com/adarshPatel509/auction_system/blob/dev/LICENSE.md) for the full license text.
+
