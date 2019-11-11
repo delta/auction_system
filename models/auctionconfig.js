@@ -27,15 +27,7 @@ module.exports = (sequelize, DataTypes) => {
     max_users: {
       type: DataTypes.INTEGER,
       allowNull: false,
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
+    }
   });
   
   AuctionConfig.associate = function(models) {

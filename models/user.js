@@ -8,15 +8,15 @@ module.exports = (sequelize, DataTypes) => {
 			primaryKey: true
     },
     name: {
-      tpye: DataTypes.STRING,
+      type: DataTypes.STRING,
       allowNull: false
-    }
+    },
     password: {
       type: DataTypes.STRING,
       allowNull: false
     },
     token: {
-      tpye: DataTypes.STRING,
+      type: DataTypes.STRING,
       allowNull: true
     },
     balance: {
@@ -25,14 +25,6 @@ module.exports = (sequelize, DataTypes) => {
     },
     role: {
       type: DataTypes.STRING,
-      allowNull: false
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false
-    },
-    updated_at: {
-      type: DataTypes.DATE,
       allowNull: false
     }
   });

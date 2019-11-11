@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
+const models = require(__dirname + '/../../models/');
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -23,9 +24,19 @@ app.use(
 
 app.use(bodyParser.json());
 
-//routes
-app.post('/test', function(req, res) {
-    Sendresponse(res, 200, 'HOLA');
+app.post('/liveAuctions', function(req, res) {
+    models.AuctionConfig.findAll({
+        where: {
+            is_open: true
+        }
+    })
+        .then(responses => {
+            console.log(responses);
+            Sendresponse(res, 200, responses);
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Not in table :D');
+        });
 });
 
 module.exports = app;
