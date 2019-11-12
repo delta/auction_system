@@ -35,15 +35,7 @@ module.exports = (sequelize, DataTypes) => {
     thumbnail_url: {
       type: DataTypes.STRING,
       allowNull: true,
-    },
-    created_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
+    }
   });
 
   Catalog.associate = function(models) {

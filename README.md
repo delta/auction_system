@@ -77,6 +77,8 @@ Before committing your work, reformat the files...
 $ npm run fmt
 ```
 
+For testing purposes import this [dump](https://github.com/adarshPatel509/auction_system/blob/dev/auction_system.sql) file to your local db. 
+
 *Happy coding*
 
 [node.js]: <http://nodejs.org>

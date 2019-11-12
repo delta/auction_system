@@ -35,7 +35,27 @@ app.get('/*', function(req, res) {
 });
 
 
-//
-app.listen(4000, function () {
+const server = app.listen(4000, function () {
 	console.log('App listening on port 4000!');
+});
+
+//socket server
+const io = require('socket.io')(server, {wsEngine: 'ws'});
+
+const handleConnections = require('./src/socketRoutes/connectionManager');
+
+//socket routes
+io.sockets.on('connection', socket => {
+	socket.on('openAuction', (namespace, owner_id) => {
+		handleConnections.ownerSokcet(socket, namespace, owner_id);
+	});
+	socket.on('closeAuction', (namespace, owner_id) => {
+		handleConnections.closeAuction(socket, io, namespace, owner_id);
+	});
+	socket.on('joinRoom', (namespace, user_id) => {
+		handleConnections.joinAuction(socket, namespace, user_id);
+	});
+	socket.on('newBid', (namespace, user_id, userName, bid_value) => {
+		handleConnections.handleBid(socket, io, namespace, user_id, userName, bid_value);
+	});
 });
