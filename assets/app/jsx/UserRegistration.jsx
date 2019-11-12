@@ -13,16 +13,14 @@ const style = {
     }
 };
 
-class UserRegisteration extends Component {
+class UserRegistration extends Component {
     constructor(props) {
         super(props);
     }
 
     onSubmit(values) {
-        console.log(values);
         dataFetch('/userRegisteration', values)
             .then(response => {
-                console.log(response);
                 if (response.status_code == 200) {
                     window.location.href = '/login';
                 }
@@ -112,4 +110,4 @@ class UserRegisteration extends Component {
     }
 }
 
-export default UserRegisteration;
+export default UserRegistration;

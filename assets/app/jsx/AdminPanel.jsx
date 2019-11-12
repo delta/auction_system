@@ -48,7 +48,6 @@ class AdminPanel extends Component {
             //prefetch config details, if it's in db
             dataFetch('/auctionConfig', data)
                 .then(response => {
-                    console.log(response);
                     if (response.status_code == 200 && response.message != null) {
                         let data = response.message;
                         //update state values;
@@ -79,7 +78,6 @@ class AdminPanel extends Component {
         data.user_id = this.state.owner_id;
         dataFetch('/auctionConfig', data)
             .then(response => {
-                console.log(response);
                 this.setState({
                     q_type: 'update_config',
                     can_register: values.can_register == 1 ? true : false,
@@ -103,7 +101,6 @@ class AdminPanel extends Component {
                     this.setState({
                         is_open: true
                     });
-                    console.log('Auction Status: open');
                 } else {
                     console.log('Error in opening auction');
                 }
@@ -138,7 +135,6 @@ class AdminPanel extends Component {
                         is_open: false,
                         clientIds: []
                     });
-                    console.log('Auction Status: closed');
                 } else {
                     console.log('Error in closing auction');
                 }

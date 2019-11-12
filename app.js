@@ -46,21 +46,16 @@ const handleConnections = require('./src/socketRoutes/connectionManager');
 
 //socket routes
 io.sockets.on('connection', socket => {
-	console.log("New connection created!!");
 	socket.on('openAuction', (namespace, owner_id) => {
-		console.log("new owner request", namespace, owner_id);
 		handleConnections.ownerSokcet(socket, namespace, owner_id);
 	});
 	socket.on('closeAuction', (namespace, owner_id) => {
-		console.log("auction close request");
 		handleConnections.closeAuction(socket, io, namespace, owner_id);
 	});
 	socket.on('joinRoom', (namespace, user_id) => {
-		console.log("new client request", namespace, user_id);
 		handleConnections.joinAuction(socket, namespace, user_id);
 	});
-	socket.on('newBid', (namespace, user_id, bid_value) => {
-		console.log("New Bid of ", bid_value, ' for ', namespace, ' by ', user_id);
-		handleConnections.handleBid(socket, io, namespace, user_id, bid_value);
+	socket.on('newBid', (namespace, user_id, userName, bid_value) => {
+		handleConnections.handleBid(socket, io, namespace, user_id, userName, bid_value);
 	});
 });

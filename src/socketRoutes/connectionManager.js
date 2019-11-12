@@ -11,7 +11,7 @@ function ownerSokcet(socket, namespace, owner_id) {
     adminSockets[namespace] = {socket: socket, id: owner_id};
     //add a entry in clientSockets & bidDetails for owner's room
     clientSockets[namespace] = {};
-    bidDetails[namespace] = {currentBid: 0, bidHolderId: -1};
+    bidDetails[namespace] = {currentBid: 0, bidHolderId: -1, bidHolderName: '-'};
     socket.emit('success', 'Auction opened successfully!!');
 }
 
@@ -28,7 +28,6 @@ function closeAuction(socket, io, namespace, owner_id) {
     io.of('/')
         .in(namespace)
         .clients((error, socketIds) => {
-            console.log(socketIds);
             if (error) throw error;
 
             socketIds.forEach(socketId => io.sockets.sockets[socketId].leave(namespace));
@@ -66,10 +65,11 @@ function joinAuction(socket, namespace, user_id) {
 
 //TODO: move this function to bidManager.js
 //handle bids for different auctions
-function handleBid(socket, io, namespace, user_id, bid_value) {
+function handleBid(socket, io, namespace, user_id, userName, bid_value) {
     //update bidDetails
     bidDetails[namespace].currentBid = bid_value;
     bidDetails[namespace].bidHolderId = user_id;
+    bidDetails[namespace].bidHolderName = userName;
     //brodcast updated bid to all clients in the room
     io.sockets.in(namespace).emit('currentBidStatus', bidDetails[namespace]);
 }

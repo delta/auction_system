@@ -21,9 +21,11 @@ class Auction extends Component {
         super(props);
         this.state = {
             user_id: '',
+            userName: '',
             namespace: '',
             bid_value: 0,
             currentBidHolder: '',
+            bidHolderName: '',
             is_open: false
         };
         this.handleBid = this.handleBid.bind(this);
@@ -39,15 +41,14 @@ class Auction extends Component {
             socket.emit('joinRoom', this.state.namespace, this.state.user_id);
         });
         socket.on('currentBidStatus', message => {
-            console.log('currentBid', message);
             this.setState({
                 is_open: true,
                 bid_value: message.currentBid,
-                currentBidHolder: message.bidHolderId
+                currentBidHolder: message.bidHolderId,
+                bidHolderName: message.bidHolderName
             });
         });
         socket.on('auctionClosed', message => {
-            console.log(message);
             this.setState({
                 is_open: false
             });
@@ -67,6 +68,7 @@ class Auction extends Component {
         } else {
             this.setState({
                 user_id: user.user_id,
+                userName: user.username,
                 namespace: url_slug
             });
             this.socketConnect(); //initalize a socket connection between client & server
@@ -74,9 +76,7 @@ class Auction extends Component {
     }
 
     handleBid() {
-        console.log('Clicked');
-        console.log(this.state);
-        socket.emit('newBid', this.state.namespace, this.state.user_id, this.state.bid_value + 1);
+        socket.emit('newBid', this.state.namespace, this.state.user_id, this.state.userName, this.state.bid_value + 1);
     }
 
     render() {
@@ -93,7 +93,7 @@ class Auction extends Component {
                     ) : (
                         <>
                             <h3>CurrentBid: {this.state.bid_value}</h3>
-                            <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.currentBidHolder}</h4>
+                            <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
                             <button className="btn btn-primary" disabled={isCurrentBidByU} onClick={this.handleBid}>
                                 Bid Higher
                             </button>

@@ -7,7 +7,7 @@ const style = {
     },
     title: {
         fontWeight: 'lighter',
-        fontSize: '24px'
+        fontSize: '30px'
     }
 };
 
@@ -49,6 +49,7 @@ class Home extends Component {
             <div>
                 <div style={style.container}>
                     <div style={style.title}>Welcome to Auctoins:</div>
+                    <p>List of live auctions:</p>
                     {this.state.liveAuctions.length == 0 ? (
                         <p>No live auctions found...</p>
                     ) : (
@@ -56,7 +57,7 @@ class Home extends Component {
                             return (
                                 <div>
                                     <a href={'http://localhost:4000/auction/' + auction.auction_url}>
-                                        {'http://localhost:4000/auction/' + auction.auction_url}
+                                        {auction.auction_url}
                                     </a>
                                     <br />
                                 </div>

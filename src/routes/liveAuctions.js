@@ -31,7 +31,6 @@ app.post('/liveAuctions', function(req, res) {
         }
     })
         .then(responses => {
-            console.log(responses);
             Sendresponse(res, 200, responses);
         })
         .catch(err => {

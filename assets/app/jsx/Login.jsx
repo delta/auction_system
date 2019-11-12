@@ -19,7 +19,6 @@ class Login extends Component {
     }
 
     onSubmit(values) {
-        console.log(values);
         dataFetch('/login', values)
             .then(response => {
                 if (response.status_code == 200) {
