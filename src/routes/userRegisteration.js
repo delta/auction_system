@@ -44,8 +44,7 @@ app.post('/userRegisteration', function(req, res) {
             Sendresponse(res, 200, 'User Registered Successfully');
         })
         .catch(err => {
-            console.log(err);
-            Sendresponse(res, 400, 'Error registering user');
+            Sendresponse(res, 400, 'Error registering user ', err);
         });
 });
 

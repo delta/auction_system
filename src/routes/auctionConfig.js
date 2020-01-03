@@ -25,10 +25,11 @@ app.use(
 app.use(bodyParser.json());
 
 app.post('/auctionConfig', function(req, res) {
-    if (req.body.q_type == 'get_config') {
+    const {q_type, user_id, can_register, is_open, url_slug: auction_url, max_users, owner_id} = req.body;
+    if (q_type == 'get_config') {
         models.AuctionConfig.findOne({
             where: {
-                owner_id: req.body.user_id
+                owner_id: user_id
             },
             raw: true,
             logging: false
@@ -39,13 +40,13 @@ app.post('/auctionConfig', function(req, res) {
             .catch(err => {
                 Sendresponse(res, 400, 'Not in table :D');
             });
-    } else if (req.body.q_type == 'add_config') {
+    } else if (q_type == 'add_config') {
         models.AuctionConfig.build({
-            owner_id: req.body.user_id,
-            can_register: req.body.can_register,
-            is_open: req.body.is_open,
-            auction_url: req.body.url_slug,
-            max_users: req.body.max_users
+            owner_id: user_id,
+            can_register,
+            is_open,
+            auction_url,
+            max_users
         })
             .save()
             .then(response => {
@@ -54,18 +55,18 @@ app.post('/auctionConfig', function(req, res) {
             .catch(err => {
                 Sendresponse(res, 400, 'Error Adding Auction Config');
             });
-    } else if (req.body.q_type == 'update_config') {
+    } else if (q_type == 'update_config') {
         models.AuctionConfig.update(
             {
-                owner_id: req.body.owner_id,
-                can_register: req.body.can_register,
-                is_open: req.body.is_open,
-                auction_url: req.body.url_slug,
-                max_users: req.body.max_users
+                owner_id,
+                can_register,
+                is_open,
+                auction_url,
+                max_users
             },
             {
                 where: {
-                    owner_id: req.body.owner_id
+                    owner_id
                 },
                 raw: true,
                 logging: false

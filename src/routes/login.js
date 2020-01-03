@@ -26,9 +26,10 @@ app.use(
 app.use(bodyParser.json());
 
 app.post('/login', function(req, res) {
+    const {username, password} = req.body;
     models.User.findOne({
         where: {
-            name: req.body.username
+            name: username
         },
         raw: true,
         logging: false
@@ -37,20 +38,20 @@ app.post('/login', function(req, res) {
             let message = {};
             message.role = user.role;
             message.user_id = user.id;
-            let userToken = md5(req.body.username + Date.now());
+            let userToken = md5(username + Date.now());
 
-            if (md5(req.body.password) == user.password) {
+            if (md5(password) == user.password) {
                 models.User.update(
                     {token: userToken},
                     {
                         where: {
-                            name: req.body.username
+                            name: username
                         },
                         raw: true,
                         logging: false
                     }
                 ).then(response => {
-                    message['username'] = req.body.username;
+                    message['username'] = username;
                     message['token'] = userToken;
                     Sendresponse(res, 200, message);
                 });
