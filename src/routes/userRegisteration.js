@@ -28,17 +28,23 @@ app.use(
 app.use(bodyParser.json());
 
 app.post('/userRegisteration', function(req, res) {
+    const {username: name, password, email, contact, country} = req.body;
+    console.log('receive request');
     models.User.build({
-        name: req.body.username,
-        password: md5(req.body.password),
+        name,
+        password: md5(password),
         role: 'User',
-        balance: 0
+        balance: 0,
+        email,
+        contact,
+        country
     })
         .save()
         .then(response => {
             Sendresponse(res, 200, 'User Registered Successfully');
         })
         .catch(err => {
+            console.log(err);
             Sendresponse(res, 400, 'Error registering user');
         });
 });
