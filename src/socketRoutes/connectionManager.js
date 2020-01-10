@@ -15,6 +15,15 @@ function ownerSocket(socket, namespace, owner_id) {
     bidManager.creatingBid(namespace);
     socket.emit('success', 'Auction opened successfully!!');
 }
+function currentCatalog(socket, namespace, owner_id, catalog) {
+    adminSockets[namespace] = {
+        socket: socket,
+        id: owner_id,
+        currentCatalog: catalog
+    };
+    console.log('catalog ', catalog);
+    socket.broadcast.to(namespace).emit('currentCatalog', catalog);
+}
 
 //Closing a auction
 function closeAuction(socket, io, namespace, owner_id) {
@@ -57,7 +66,8 @@ function joinAuction(socket, namespace, user_id) {
         clientSockets[namespace][user_id] = socket;
         //add client to auction room
         socket.join(namespace);
-
+        console.log('currentCatalog', adminSockets[namespace].currentCatalog);
+        socket.emit('currentCatalog', adminSockets[namespace].currentCatalog);
         // send current bidDetails to this newly added client
         bidManager.showCurrentBid(socket, namespace);
 
@@ -71,5 +81,6 @@ module.exports = {
     closeAuction,
     joinAuction,
     clientSockets,
-    adminSockets
+    adminSockets,
+    currentCatalog
 };
