@@ -1,6 +1,7 @@
 const fs = require('fs');
 const express = require('express');
 const app = express();
+
 const db = require('./models/index');
 //routes
 const routes = require('./src/routes');
@@ -32,6 +33,7 @@ app.get('/*', function(req, res) {
 const server = app.listen(4000, function() {
     console.log('App listening on port 4000!');
 });
+
 db.sequelize
     .sync({
         force: false
@@ -39,6 +41,7 @@ db.sequelize
     .then(() => {
         console.log('DB Synced');
     });
+
 //socket server
 const io = require('socket.io')(server, {wsEngine: 'ws'});
 
