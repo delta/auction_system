@@ -5,7 +5,7 @@ import io from 'socket.io-client';
 
 const style = {
     formBox: {
-        width: '300px',
+        width: '500px',
         height: '600px',
         position: 'absolute',
         left: '50%',
@@ -26,6 +26,9 @@ class AdminPanel extends Component {
             is_open: false,
             url_slug: '',
             max_users: 0,
+            catalogs: [],
+            sold: [],
+            start: '',
             clientIds: []
         };
         this.onSubmit = this.onSubmit.bind(this);
@@ -108,7 +111,25 @@ class AdminPanel extends Component {
             .catch(err => {
                 console.log('Some error occured');
             });
-
+        dataFetch('/getCatalog', data)
+            .then(response => {
+                if (response.status_code == 200) {
+                    console.log(response);
+                    this.setState(
+                        {
+                            catalogs: response.message
+                        },
+                        () => {
+                            console.log('this.state.catalogs ', this.state.catalogs);
+                        }
+                    );
+                } else {
+                    console.log('Error in fetching catalog');
+                }
+            })
+            .catch(err => {
+                console.log('Some Error Occured');
+            });
         socket = io.connect();
         socket.on('connect', () => {
             //once connected to server request to openAuction
@@ -146,8 +167,41 @@ class AdminPanel extends Component {
         //emit close auction
         socket.emit('closeAuction', this.state.url_slug, this.state.owner_id);
     }
-
+    markSold = id => {
+        console.log('catalog', id);
+        const {sold, catalogs} = this.state;
+        if (sold.includes(id)) {
+            return;
+        }
+        sold.push(id);
+        this.setState(
+            {
+                sold,
+                start: ''
+            },
+            () => {
+                if (sold.length === catalogs.length) {
+                    this.closeAuction();
+                }
+            }
+        );
+    };
+    markBiddingStart = id => {
+        this.setState(
+            {
+                start: id
+            },
+            () => {
+                const {catalogs, start, url_slug, owner_id} = this.state;
+                console.log('start ', start);
+                let catalog = catalogs.filter(catalog => catalog.id === start);
+                console.log(catalog);
+                socket.emit('biddingStart', url_slug, owner_id, catalog[0]);
+            }
+        );
+    };
     render() {
+        const {catalogs, sold, start} = this.state;
         if (this.state.q_type == 'add_config') {
             return (
                 <div>
@@ -232,7 +286,7 @@ class AdminPanel extends Component {
             );
         } else {
             return (
-                <div className="container" style={style.formBox}>
+                <div className="container text-center" style={style.formBox}>
                     <h2>AdminPanel : {this.state.url_slug}</h2>
                     <h3>
                         UsersCount: {this.state.clientIds.length}/{this.state.max_users}
@@ -245,6 +299,44 @@ class AdminPanel extends Component {
                     <button className="btn btn-danger" onClick={this.closeAuction} disabled={!this.state.is_open}>
                         Close Auction
                     </button>
+
+                    {this.state.is_open && (
+                        <div className="mt-5">
+                            <div className="row">
+                                <div className="col-md-3 font-weight-bold text-center">Name</div>
+                                <div className="col-md-3 font-weight-bold text-center">Price</div>
+                                <div className="col-md-6 font-weight-bold text-center">Status</div>
+                            </div>
+                            {catalogs.map(catalog => (
+                                <div className="row" key={catalog.id}>
+                                    <div className="col-md-3 m-1 text-center">{catalog.id}</div>
+                                    <div className="col-md-3 m-1 text-center">{catalog.base_price}</div>
+                                    <div className="col-md-5  m-1 text-center">
+                                        {sold.includes(catalog.id) ? (
+                                            'SOLD'
+                                        ) : (
+                                            <div>
+                                                {start !== catalog.id && (
+                                                    <button
+                                                        className="btn btn-success m-1"
+                                                        disabled={start && start !== catalog.id}
+                                                        onClick={() => this.markBiddingStart(catalog.id)}>
+                                                        Start
+                                                    </button>
+                                                )}
+                                                <button
+                                                    className="btn btn-danger m-1"
+                                                    disabled={start && start !== catalog.id}
+                                                    onClick={() => this.markSold(catalog.id)}>
+                                                    Sold
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
         }
