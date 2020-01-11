@@ -169,7 +169,7 @@ class AdminPanel extends Component {
     }
     markSold = id => {
         console.log('catalog', id);
-        const {sold, catalogs} = this.state;
+        const {sold, catalogs, start} = this.state;
         if (sold.includes(id)) {
             return;
         }
@@ -180,9 +180,39 @@ class AdminPanel extends Component {
                 start: ''
             },
             () => {
-                if (sold.length === catalogs.length) {
-                    this.closeAuction();
-                }
+                console.log('mark Sold');
+                const {owner_id, url_slug: namespace} = this.state;
+                const data = {owner_id, item_id: start, namespace};
+                console.log('data ', data);
+                socket.emit('biddingStop', owner_id, namespace);
+                socket.on('stopBiddingSuccess', bidDetails => {
+                    console.log('bidDetails ', bidDetails);
+                    this.setState(
+                        {
+                            bidDetails
+                        },
+                        () => {
+                            const {currentBid: final_price, bidHolderId: user_id} = this.state.bidDetails;
+                            data.final_price = final_price;
+                            data.user_id = user_id;
+                            dataFetch('/saveAuctionSummary', data)
+                                .then(response => {
+                                    console.log('response ', response);
+                                    if (response.status_code == 200) {
+                                        alert(response.message);
+                                    } else {
+                                        console.log('Error in closing auction');
+                                    }
+                                })
+                                .catch(err => {
+                                    console.log('Some error occured');
+                                });
+                            if (sold.length === catalogs.length) {
+                                this.closeAuction();
+                            }
+                        }
+                    );
+                });
             }
         );
     };

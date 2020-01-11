@@ -25,6 +25,9 @@ function showCurrentBid(socket, namespace) {
     socket.emit('currentBidStatus', bidDetails[namespace]);
     return;
 }
+function getCurrentBid(namespace) {
+    return bidDetails[namespace];
+}
 
 //handle bids for different auctions
 function handleBid(io, namespace, user_id, userName, bid_value) {
@@ -43,5 +46,6 @@ module.exports = {
     deleteBid,
     showCurrentBid,
     handleBid,
-    bidDetails
+    bidDetails,
+    getCurrentBid
 };
