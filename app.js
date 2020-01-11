@@ -62,4 +62,7 @@ io.sockets.on('connection', socket => {
     socket.on('biddingStart', (namespace, owner_id, catalog) => {
         handleConnections.currentCatalog(socket, namespace, owner_id, catalog);
     });
+    socket.on('biddingStop', (owner_id, namespace) => {
+        handleConnections.stopBidding(io, socket, namespace, owner_id);
+    });
 });

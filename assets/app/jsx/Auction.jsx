@@ -55,14 +55,19 @@ class Auction extends Component {
             socket.close();
         });
         socket.on('currentCatalog', catalog => {
-            this.setState(
-                {
-                    catalog
-                },
-                () => {
-                    console.log('currentCatalog ', catalog);
-                }
-            );
+            this.setState({
+                catalog
+            });
+        });
+        socket.on('startAuction', catalog => {
+            this.setState({
+                catalog: ''
+            });
+        });
+        socket.on('currentCatalogSold', catalog => {
+            this.setState({
+                catalog
+            });
         });
     }
 

@@ -21,8 +21,19 @@ function currentCatalog(socket, namespace, owner_id, catalog) {
         id: owner_id,
         currentCatalog: catalog
     };
-    console.log('catalog ', catalog);
     socket.broadcast.to(namespace).emit('currentCatalog', catalog);
+}
+function stopBidding(io, socket, namespace, user_id) {
+    adminSockets[namespace] = {
+        socket,
+        id: user_id,
+        currentCatalog: ''
+    };
+    const bidDetails = bidManager.getCurrentBid(namespace);
+    socket.emit('stopBiddingSuccess', bidDetails);
+    socket.broadcast.to(namespace).emit('currentCatalogSold', adminSockets[namespace].currentCatalog);
+    bidManager.handleBid(io, namespace, '-', -1, 0);
+    return;
 }
 
 //Closing a auction
@@ -34,18 +45,16 @@ function closeAuction(socket, io, namespace, owner_id) {
     //broadcast close auction message to all clients on the room
     socket.broadcast.to(namespace).emit('auctionClosed', 'Auction is closed now!');
 
-    //broadcast close auction message to all clients on the room
-    socket.broadcast.to(namespace).emit('auctionClosed', 'Auction is closed now!');
-
     //delete all clients connected to this room
     io.of('/')
         .in(namespace)
         .clients((error, socketIds) => {
             if (error) throw error;
+
             socketIds.forEach(socketId => io.sockets.sockets[socketId].leave(namespace));
         });
 
-    socket.emit('sucess', 'Auction closed successfully');
+    socket.emit('success', 'Auction closed successfully');
     //delete owner entry
     delete adminSockets[namespace];
     //disconnect from owner socket
@@ -68,7 +77,6 @@ function joinAuction(socket, namespace, user_id) {
         clientSockets[namespace][user_id] = socket;
         //add client to auction room
         socket.join(namespace);
-        console.log('currentCatalog', adminSockets[namespace].currentCatalog);
         socket.emit('currentCatalog', adminSockets[namespace].currentCatalog);
         // send current bidDetails to this newly added client
         bidManager.showCurrentBid(socket, namespace);
@@ -84,5 +92,6 @@ module.exports = {
     joinAuction,
     clientSockets,
     adminSockets,
-    currentCatalog
+    currentCatalog,
+    stopBidding
 };

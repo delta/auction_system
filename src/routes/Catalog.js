@@ -32,7 +32,16 @@ app.post('/getCatalog', function(req, res) {
         }
     })
         .then(catalogs => {
-            Sendresponse(res, 200, catalogs);
+            let catalogItemIds = catalogs.map(catalog => catalog.id);
+            models.AuctionSummary.findAll({
+                where: {
+                    item_id: catalogItemIds
+                }
+            }).then(items => {
+                let itemIds = items.map(items => items.item_id);
+                let itemAvailable = catalogs.filter(x => !itemIds.includes(x.id));
+                Sendresponse(res, 200, itemAvailable);
+            });
         })
         .catch(err => {
             Sendresponse(res, 400, 'Not found Data');
