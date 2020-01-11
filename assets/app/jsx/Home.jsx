@@ -1,5 +1,6 @@
 import React, {Component} from 'react';
 import dataFetch from './DataFetch';
+import {notifyError} from '../Common/common';
 
 const style = {
     container: {
@@ -39,7 +40,7 @@ class Home extends Component {
                     }
                 })
                 .catch(err => {
-                    console.log(err);
+                    notifyError(err.response);
                 });
         }
     }
