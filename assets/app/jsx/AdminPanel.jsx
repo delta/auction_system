@@ -2,10 +2,13 @@ import React, {Component} from 'react';
 import dataFetch from './DataFetch';
 import {Form, Field} from 'react-final-form';
 import io from 'socket.io-client';
+import {notifyError, notifySuccess} from '../Common/common.js';
+import {ToastContainer} from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const style = {
     formBox: {
-        width: '300px',
+        width: '500px',
         height: '600px',
         position: 'absolute',
         left: '50%',
@@ -26,6 +29,9 @@ class AdminPanel extends Component {
             is_open: false,
             url_slug: '',
             max_users: 0,
+            catalogs: [],
+            sold: [],
+            start: '',
             clientIds: []
         };
         this.onSubmit = this.onSubmit.bind(this);
@@ -51,14 +57,21 @@ class AdminPanel extends Component {
                     if (response.status_code == 200 && response.message != null) {
                         let data = response.message;
                         //update state values;
-                        this.setState({
-                            owner_id: user.user_id,
-                            q_type: 'update_config',
-                            can_register: data.can_register == 1 ? true : false,
-                            is_open: data.is_open == 1 ? true : false,
-                            url_slug: data.auction_url,
-                            max_users: data.max_users
-                        });
+                        this.setState(
+                            {
+                                owner_id: user.user_id,
+                                q_type: 'update_config',
+                                can_register: data.can_register == 1 ? true : false,
+                                is_open: data.is_open == 1 ? true : false,
+                                url_slug: data.auction_url,
+                                max_users: data.max_users
+                            },
+                            () => {
+                                if (this.state.is_open) {
+                                    this.openAuction();
+                                }
+                            }
+                        );
                     } else {
                         this.setState({
                             owner_id: user.user_id,
@@ -67,7 +80,7 @@ class AdminPanel extends Component {
                     }
                 })
                 .catch(err => {
-                    console.log(err);
+                    notifyError(err.response);
                 });
         }
     }
@@ -87,10 +100,26 @@ class AdminPanel extends Component {
                 });
             })
             .catch(err => {
-                console.log(err);
+                notifyError(err.response);
             });
     }
-
+    getCatalog = data => {
+        if (this.state.is_open) {
+            dataFetch('/getCatalog', data)
+                .then(response => {
+                    if (response.status_code == 200) {
+                        this.setState({
+                            catalogs: response.message
+                        });
+                    } else {
+                        notifyError(response.message);
+                    }
+                })
+                .catch(err => {
+                    notifyError(err.response);
+                });
+        }
+    };
     openAuction() {
         //update auctionConfig
         let data = {...this.state};
@@ -98,24 +127,59 @@ class AdminPanel extends Component {
         dataFetch('/auctionConfig', data)
             .then(response => {
                 if (response.status_code == 200) {
-                    this.setState({
-                        is_open: true
-                    });
+                    this.setState(
+                        {
+                            is_open: true
+                        },
+                        () => {
+                            this.getCatalog(data);
+                        }
+                    );
                 } else {
-                    console.log('Error in opening auction');
+                    notifySuccess(response.message);
                 }
             })
             .catch(err => {
-                console.log('Some error occured');
+                notifyError(err.response);
             });
 
+        //once connected to server request to openAuction
         socket = io.connect();
         socket.on('connect', () => {
-            //once connected to server request to openAuction
             socket.emit('openAuction', this.state.url_slug, this.state.owner_id);
+            const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
+            const data = {owner_id, namespace};
+            socket.on('stopBiddingSuccess', bidDetails => {
+                this.setState(
+                    {
+                        bidDetails
+                    },
+                    () => {
+                        const {currentBid: final_price, bidHolderId: user_id} = this.state.bidDetails;
+                        data.final_price = final_price;
+                        data.user_id = user_id;
+                        data.item_id = sold[sold.length - 1];
+                        dataFetch('/saveAuctionSummary', data)
+                            .then(response => {
+                                if (response.status_code == 200) {
+                                    notifySuccess(response.message);
+                                } else {
+                                    notifyError(response.message);
+                                }
+                            })
+                            .catch(err => {
+                                notifyError(err.response);
+                            });
+                        if (sold.length === catalogs.length) {
+                            this.closeAuction();
+                        }
+                    }
+                );
+            });
         });
+        // });
         socket.on('success', message => {
-            console.log(message);
+            notifySuccess(message);
         });
         socket.on('onlineUsers', message => {
             this.setState({
@@ -136,18 +200,44 @@ class AdminPanel extends Component {
                         clientIds: []
                     });
                 } else {
-                    console.log('Error in closing auction');
+                    notifyError(response.message);
                 }
             })
             .catch(err => {
-                console.log('Some error occured');
+                notifyError(err.response);
             });
 
         //emit close auction
         socket.emit('closeAuction', this.state.url_slug, this.state.owner_id);
     }
+    markSold = (event, id) => {
+        event.preventDefault();
+        const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
+        if (sold.includes(id)) {
+            return;
+        }
+        sold.push(id);
+        this.setState({
+            sold,
+            start: ''
+        });
+        socket.emit('biddingStop', owner_id, namespace);
+    };
+    markBiddingStart = id => {
+        this.setState(
+            {
+                start: id
+            },
+            () => {
+                const {catalogs, start, url_slug, owner_id} = this.state;
+                let catalog = catalogs.filter(catalog => catalog.id === start);
+                socket.emit('biddingStart', url_slug, owner_id, catalog[0]);
+            }
+        );
+    };
 
     render() {
+        const {catalogs, sold, start} = this.state;
         if (this.state.q_type == 'add_config') {
             return (
                 <div>
@@ -232,7 +322,16 @@ class AdminPanel extends Component {
             );
         } else {
             return (
-                <div className="container" style={style.formBox}>
+                <div className="container text-center" style={style.formBox}>
+                    <ToastContainer
+                        position="top-right"
+                        hideProgressBar={true}
+                        autoClose={4000}
+                        newestOnTop={true}
+                        closeOnClick={true}
+                        draggable={false}
+                        rtl={false}
+                    />
                     <h2>AdminPanel : {this.state.url_slug}</h2>
                     <h3>
                         UsersCount: {this.state.clientIds.length}/{this.state.max_users}
@@ -245,6 +344,46 @@ class AdminPanel extends Component {
                     <button className="btn btn-danger" onClick={this.closeAuction} disabled={!this.state.is_open}>
                         Close Auction
                     </button>
+
+                    {this.state.is_open && (
+                        <div className="mt-5">
+                            <div className="row">
+                                <div className="col-md-3 font-weight-bold text-center">Name</div>
+                                <div className="col-md-3 font-weight-bold text-center">Price</div>
+                                <div className="col-md-6 font-weight-bold text-center">Status</div>
+                            </div>
+                            {catalogs.map(catalog => (
+                                <div className="row" key={catalog.id}>
+                                    <div className="col-md-3 m-1 text-center">{catalog.name}</div>
+                                    <div className="col-md-3 m-1 text-center">{catalog.base_price}</div>
+                                    <div className="col-md-5  m-1 text-center">
+                                        {sold.includes(catalog.id) ? (
+                                            'SOLD'
+                                        ) : (
+                                            <div>
+                                                {start !== catalog.id && (
+                                                    <button
+                                                        className="btn btn-success m-1"
+                                                        disabled={start && start !== catalog.id}
+                                                        onClick={() => this.markBiddingStart(catalog.id)}>
+                                                        Start
+                                                    </button>
+                                                )}
+                                                {start && (
+                                                    <button
+                                                        className="btn btn-danger m-1"
+                                                        disabled={start && start !== catalog.id}
+                                                        onClick={event => this.markSold(event, catalog.id)}>
+                                                        Sold
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
         }

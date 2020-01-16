@@ -18,7 +18,7 @@ module.exports = (env, options) => {
             rules: [
                 {
                     test: /\.(js|jsx)$/,
-                   // exclude: /node_modules/,
+                    // exclude: /node_modules/,
                     loader: 'babel-loader',
                     options: {
                         presets: [
@@ -31,6 +31,10 @@ module.exports = (env, options) => {
                 {
                     test: /\.(jpe?g|png|gif|woff|woff2|eot|ttf|svg)(\?[a-z0-9=.]+)?$/,
                     loader: 'url-loader?limit=100000'
+                },
+                {
+                    test: /\.css$/i,
+                    use: ['css-loader']
                 }
             ]
         },
@@ -46,7 +50,7 @@ module.exports = (env, options) => {
                 new UglifyJSPlugin({
                     uglifyOptions: {
                         compress: {
-                            drop_console: true,
+                            drop_console: true
                         }
                     }
                 })

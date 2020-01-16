@@ -5,9 +5,6 @@ const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
-const md5 = require('md5');
-
-//Sample file for all routes
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -27,23 +24,19 @@ app.use(
 
 app.use(bodyParser.json());
 
-app.post('/userRegisteration', function(req, res) {
-    const {username: name, password, email, contact, country} = req.body;
-    models.User.build({
-        name,
-        password: md5(password),
-        role: 'User',
-        balance: 0,
-        email,
-        contact,
-        country
+app.post('/saveAuctionSummary', function(req, res) {
+    const {user_id, item_id, final_price} = req.body;
+    models.AuctionSummary.build({
+        user_id,
+        item_id,
+        final_price
     })
         .save()
         .then(response => {
-            Sendresponse(res, 200, 'User Registered Successfully');
+            Sendresponse(res, 200, 'Saved Successfully');
         })
         .catch(err => {
-            Sendresponse(res, 400, 'Error registering user ', err);
+            Sendresponse(res, 400, 'Error in Saving');
         });
 });
 

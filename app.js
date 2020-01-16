@@ -32,15 +32,18 @@ app.get('/*', function(req, res) {
 const server = app.listen(4000, function() {
     console.log('App listening on port 4000!');
 });
-db.sequelize.sync({
-    force: true
-}).then(() => {
-    console.log('DB Synced');
-});
+db.sequelize
+    .sync({
+        force: false
+    })
+    .then(() => {
+        console.log('DB Synced');
+    });
 //socket server
 const io = require('socket.io')(server, {wsEngine: 'ws'});
 
 const handleConnections = require('./src/socketRoutes/connectionManager');
+const handleBiding = require('./src/socketRoutes/bidManager');
 
 //socket routes
 io.sockets.on('connection', socket => {
@@ -54,6 +57,12 @@ io.sockets.on('connection', socket => {
         handleConnections.joinAuction(socket, namespace, user_id);
     });
     socket.on('newBid', (namespace, user_id, userName, bid_value) => {
-        handleConnections.handleBid(socket, io, namespace, user_id, userName, bid_value);
+        handleBiding.handleBid(io, namespace, user_id, userName, bid_value);
+    });
+    socket.on('biddingStart', (namespace, owner_id, catalog) => {
+        handleConnections.currentCatalog(socket, namespace, owner_id, catalog);
+    });
+    socket.on('biddingStop', (owner_id, namespace) => {
+        handleConnections.stopBidding(io, socket, namespace, owner_id);
     });
 });
