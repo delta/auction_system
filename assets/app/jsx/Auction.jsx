@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import dataFetch from './DataFetch';
 import io from 'socket.io-client';
 import Swal from 'sweetalert2';
+import {notifyError} from '../Common/common';
 
 const style = {
     formBox: {
@@ -33,14 +34,71 @@ class Auction extends Component {
         this.handleBid = this.handleBid.bind(this);
     }
 
-    componentWillMount() {
-        this.checkStatus();
-    }
-
     componentDidMount() {
+        this.checkStatus();
+        this.isAuthenticated();
+    }
+    isAuthenticated = () => {
+        const {namespace} = this.state;
+        dataFetch('/accessAuction', {url_slug: namespace})
+            .then(auction => {
+                if (auction.message.access_type === 'private') {
+                    Swal.fire({
+                        title: 'Password',
+                        input: 'text',
+                        inputAttributes: {
+                            autocapitalize: 'off'
+                        },
+                        showCancelButton: true,
+                        confirmButtonText: 'Join',
+                        showLoaderOnConfirm: true
+                    }).then(response => {
+                        if (response.dismiss == 'cancel') {
+                            this.props.history.push('/home');
+                            return;
+                        }
+                        let data = {password: response.value, auction_url: namespace};
+                        dataFetch('/authorizeAuction', data)
+                            .then(data => {
+                                if (data.message.verified) {
+                                    this.socketHandler();
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Oops...',
+                                        text: 'Incorrect Password'
+                                    });
+                                    this.props.history.push('/home');
+                                }
+                            })
+                            .catch(err => {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Oops...',
+                                    text: err
+                                });
+                            });
+                    });
+                } else if (auction.message.access_type === 'public') {
+                    this.socketHandler();
+                }
+            })
+            .catch(err => {
+                notifyError(err.message);
+            });
+    };
+
+    socketHandler = () => {
+        this.socketConnect();
         socket.on('connect', () => {
             //once connected to server, join particular room
-            socket.emit('joinRoom', this.state.namespace, this.state.user_id);
+            const data = {
+                user_id: this.state.user_id,
+                auction_id: parseInt(this.props.match.params.id)
+            };
+            dataFetch('/userAuctionRegistration', data).then(user => {
+                socket.emit('joinRoom', this.state.namespace, this.state.user_id);
+            });
         });
         socket.on('max_limit_exceeded', () => {
             Swal.fire({
@@ -89,7 +147,7 @@ class Auction extends Component {
                 catalog
             });
         });
-    }
+    };
 
     socketConnect() {
         socket = io.connect();
@@ -106,7 +164,6 @@ class Auction extends Component {
                 userName: user.username,
                 namespace: url_slug
             });
-            this.socketConnect(); //initalize a socket connection between client & server
         }
     }
 

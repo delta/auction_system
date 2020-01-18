@@ -17,7 +17,7 @@ ReactDOM.render(
             <Route exact path="/adminpanel" component={AdminPanel} />
             <Route exact path="/home" component={Home} />
             <Route exact path="/login" component={Login} />
-            <Route exact path="/auction/:url_slug" component={Auction} />
+            <Route exact path="/auction/:url_slug/:id" component={Auction} />
             <Route path="*" component={PageNotFound} />
         </Switch>
     </BrowserRouter>,

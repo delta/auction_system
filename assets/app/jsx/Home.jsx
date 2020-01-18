@@ -22,7 +22,7 @@ class Home extends Component {
         };
     }
 
-    componentWillMount() {
+    componentDidMount() {
         this.getLiveAuctions();
     }
 
@@ -44,6 +44,9 @@ class Home extends Component {
                 });
         }
     }
+    joinAuction = auction => {
+        this.props.history.push(`/auction/${auction.auction_url}/${auction.id}`);
+    };
 
     render() {
         return (
@@ -57,9 +60,7 @@ class Home extends Component {
                         this.state.liveAuctions.map(auction => {
                             return (
                                 <div>
-                                    <a href={'http://localhost:4000/auction/' + auction.auction_url}>
-                                        {auction.auction_url}
-                                    </a>
+                                    <span onClick={() => this.joinAuction(auction)}>{auction.auction_url}</span>
                                     <br />
                                 </div>
                             );

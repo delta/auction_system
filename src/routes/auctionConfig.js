@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
+const md5 = require('md5');
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -24,59 +25,143 @@ app.use(
 
 app.use(bodyParser.json());
 
-app.post('/auctionConfig', function(req, res) {
-    const {q_type, user_id, can_register, is_open, url_slug: auction_url, max_users, owner_id} = req.body;
-    if (q_type == 'get_config') {
-        models.AuctionConfig.findOne({
-            where: {
-                owner_id: user_id
-            },
-            raw: true,
-            logging: false
+app.post('/getAuctionConfig', function(req, res) {
+    const {user_id} = req.body;
+    models.AuctionConfig.findOne({
+        where: {
+            owner_id: user_id
+        },
+        raw: true,
+        logging: false
+    })
+        .then(owner => {
+            Sendresponse(res, 200, owner);
         })
-            .then(owner => {
-                Sendresponse(res, 200, owner);
-            })
-            .catch(err => {
-                Sendresponse(res, 400, 'Not in table :D');
-            });
-    } else if (q_type == 'add_config') {
-        models.AuctionConfig.build({
-            owner_id: user_id,
+        .catch(err => {
+            Sendresponse(res, 400, 'Not in table :D');
+        });
+});
+
+app.post('/addAuctionConfig', function(req, res) {
+    const {user_id, can_register, is_open, url_slug: auction_url, max_users, access_type, password} = req.body;
+    models.AuctionConfig.build({
+        owner_id: user_id,
+        can_register,
+        is_open,
+        auction_url,
+        max_users,
+        access_type,
+        password: md5(password)
+    })
+        .save()
+        .then(response => {
+            Sendresponse(res, 200, response);
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Error Adding Auction Config');
+        });
+});
+app.post('/updateAuctionConfig', function(req, res) {
+    const {can_register, is_open, url_slug: auction_url, max_users, owner_id} = req.body;
+    models.AuctionConfig.update(
+        {
+            owner_id,
             can_register,
             is_open,
             auction_url,
             max_users
-        })
-            .save()
-            .then(response => {
-                Sendresponse(res, 200, 'Config Added Successfully');
-            })
-            .catch(err => {
-                Sendresponse(res, 400, 'Error Adding Auction Config');
-            });
-    } else if (q_type == 'update_config') {
-        models.AuctionConfig.update(
-            {
-                owner_id,
-                can_register,
-                is_open,
-                auction_url,
-                max_users
+        },
+        {
+            where: {
+                owner_id
             },
-            {
-                where: {
-                    owner_id
-                },
-                raw: true,
-                logging: false
+            raw: true,
+            logging: false
+        }
+    ).then(response => {
+        Sendresponse(res, 200, 'Config Updated Successfully');
+    });
+});
+
+app.post('/authorizeAuction', (req, res) => {
+    const {auction_url, password} = req.body;
+    models.AuctionConfig.findOne({
+        where: {
+            auction_url
+        },
+        raw: true,
+        logging: false
+    })
+        .then(auction => {
+            if (md5(password) === auction.password) {
+                Sendresponse(res, 200, {verified: true});
+            } else {
+                Sendresponse(res, 200, {verified: false});
             }
-        ).then(response => {
-            Sendresponse(res, 200, 'Config Updated Successfully');
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Not in table :D');
         });
-    } else {
-        Sendresponse(res, 400, 'Invalid Config Details');
-    }
+});
+
+app.post('/accessAuction', (req, res) => {
+    models.AuctionConfig.findOne({
+        where: {
+            auction_url: req.body.url_slug
+        },
+        attributes: ['access_type'],
+        raw: true,
+        logging: false
+    })
+        .then(auction => {
+            Sendresponse(res, 200, auction);
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Not in table :D');
+        });
+});
+
+app.post('/userAuctionRegistration', (req, res) => {
+    const {user_id, auction_id} = req.body;
+    models.Registration.findOne({
+        where: {
+            user_id,
+            auction_id
+        }
+    })
+        .then(users => {
+            if (!users) {
+                models.Registration.build({
+                    user_id,
+                    auction_id
+                })
+                    .save()
+                    .then(registration => {
+                        Sendresponse(res, 200, registration);
+                    });
+            } else {
+                Sendresponse(res, 200, users);
+            }
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Error Registering User');
+        });
+});
+
+app.post('/getRegisteredUser', (req, res) => {
+    const {auction_id} = req.body;
+    models.Registration.findAll({
+        where: {
+            auction_id
+        },
+        raw: true
+    })
+        .then(users => {
+            Sendresponse(res, 200, users);
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Error fetching User');
+        });
 });
 
 module.exports = app;

@@ -9,7 +9,7 @@
     "watch": "npm run fmt & npm run watch:node & npm run watch:react",
     "serve": "NODE_ENV=production forever app.js",
     "prod": "webpack --progress --mode production & npm run serve",
-    "fmt": "prettier --print-width 120 --jsx-bracket-same-line --no-bracket-spacing --single-quote --tab-width 4 --write \"assets/**/*.jsx\" 'src/**/*.js' app.js"
+    "fmt": "prettier --print-width 120 --jsx-bracket-same-line --no-bracket-spacing --single-quote --tab-width 4 --write \"assets/**/*.jsx\" 'src/**/*.js' 'migrations/*.js' 'models/*.js' app.js"
   },
   "author": "Deltaforce",
   "dependencies": {

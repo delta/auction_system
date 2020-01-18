@@ -51,7 +51,7 @@ app.post('/getUserDetails', (req, res) => {
         where: {
             id: req.body.ids
         },
-        attributes: ['name', 'email', 'contact', 'country']
+        attributes: ['name', 'email', 'contact', 'country', 'id']
     })
         .then(response => {
             Sendresponse(res, 200, response);
