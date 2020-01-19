@@ -37,7 +37,10 @@ class AdminPanel extends Component {
             clientIds: [],
             selectedUser: '',
             access_type: 'public',
-            password: ''
+            password: '',
+            pauseCatalog: '',
+            allBids: [],
+            deleteBid: []
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -120,9 +123,14 @@ class AdminPanel extends Component {
             dataFetch('/getCatalog', data)
                 .then(response => {
                     if (response.status_code == 200) {
-                        this.setState({
-                            catalogs: response.message
-                        });
+                        this.setState(
+                            {
+                                catalogs: response.message
+                            },
+                            () => {
+                                this.getRegisteredUser();
+                            }
+                        );
                     } else {
                         notifyError(response.message);
                     }
@@ -131,6 +139,26 @@ class AdminPanel extends Component {
                     notifyError(err.response);
                 });
         }
+    };
+    getRegisteredUser = () => {
+        dataFetch('/getRegisteredUser', {
+            auction_id: this.state.auction_id
+        })
+            .then(users => {
+                const arrId = users.message.map(user => String(user.user_id));
+                dataFetch('/getUserDetails', {ids: arrId}).then(response => {
+                    if (response.status_code == 200) {
+                        this.setState({
+                            activeUsers: response.message
+                        });
+                    } else {
+                        notifyError('Error Fetching Active User');
+                    }
+                });
+            })
+            .catch(err => {
+                notifyError(err.response);
+            });
     };
     openAuction() {
         //update auctionConfig
@@ -216,6 +244,14 @@ class AdminPanel extends Component {
                     });
             });
         });
+        socket.on('allBids', bidDetails => {
+            this.setState({
+                allBids: bidDetails.reverse()
+            });
+        });
+        socket.on('successfullyDeleted', () => {
+            notifySuccess('SuccessFully Deleted');
+        });
     }
 
     closeAuction() {
@@ -283,18 +319,22 @@ class AdminPanel extends Component {
         );
     };
 
-    markSold = (event, id) => {
+    markSold = (event, id, catalog) => {
         event.preventDefault();
         const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
         if (sold.includes(id)) {
             return;
         }
         sold.push(id);
-        this.setState({
-            sold,
-            start: ''
-        });
-        socket.emit('biddingStop', owner_id, namespace);
+        this.setState(
+            {
+                sold,
+                start: '',
+                allBids: []
+            },
+            () => {}
+        );
+        socket.emit('biddingStop', owner_id, namespace, catalog.name);
     };
     markBiddingStart = id => {
         this.setState(
@@ -307,6 +347,45 @@ class AdminPanel extends Component {
                 socket.emit('biddingStart', url_slug, owner_id, catalog[0]);
             }
         );
+    };
+    markPause = catalog => {
+        const {owner_id, url_slug} = this.state;
+        this.setState({
+            pauseCatalog: catalog.id
+        });
+        socket.emit('pauseBidding', owner_id, url_slug, catalog);
+    };
+    markResume = catalog => {
+        const {owner_id, url_slug} = this.state;
+        this.setState({
+            pauseCatalog: ''
+        });
+        socket.emit('resumeBidding', owner_id, url_slug, catalog);
+    };
+    deleteBid = (event, catalog) => {
+        event.preventDefault();
+        let {deleteBid, allBids, owner_id, url_slug} = this.state;
+        deleteBid.forEach(bid => {
+            allBids = allBids.filter(Bid => Bid.currentBid != bid);
+        });
+        this.setState({
+            allBids,
+            deleteBid: []
+        });
+        socket.emit('deleteBids', allBids, owner_id, url_slug, catalog);
+    };
+    handleChecked = e => {
+        let id = e.target.id;
+        const {deleteBid} = this.state;
+        let index = deleteBid.indexOf(id);
+        if (index > -1) {
+            deleteBid.splice(index, 1);
+        } else {
+            deleteBid.push(id);
+        }
+        this.setState({
+            deleteBid
+        });
     };
 
     render() {
@@ -322,7 +401,10 @@ class AdminPanel extends Component {
             is_open,
             can_register,
             access_type,
-            password
+            password,
+            pauseCatalog,
+            allBids,
+            deleteBid
         } = this.state;
         if (q_type == 'add_config') {
             return (
@@ -399,24 +481,6 @@ class AdminPanel extends Component {
                                             )}
                                         </Field>
                                     )}
-                                    {/* <Field name="is_open">
-                    {({ input, meta }) => (
-                      <div className="form-row">
-                        <label>Auction Open:</label>
-                        <input className="form-control" {...input} type="checkbox" placeholder="Confirm" />
-                        {meta.error && meta.touched && <span>{meta.error}</span>}
-                      </div>
-                    )}
-                  </Field>
-                  <Field name="can_register">
-                    {({ input, meta }) => (
-                      <div className="form-row">
-                        <label>Registeration Open:</label>
-                        <input className="form-control" {...input} type="checkbox" placeholder="Confirm" />
-                        {meta.error && meta.touched && <span>{meta.error}</span>}
-                      </div>
-                    )}
-                  </Field> */}
                                     <div className="from-row">
                                         <button className="btn btn-primary" type="submit" disabled={submitting}>
                                             {q_type == 'add_config' ? 'Add' : 'Update'}
@@ -477,34 +541,96 @@ class AdminPanel extends Component {
                                         <div className="col-md-6 font-weight-bold text-center">Status</div>
                                     </div>
                                     {catalogs.map(catalog => (
-                                        <div className="row" key={catalog.id}>
-                                            <div className="col-md-3 m-1 text-center">{catalog.name}</div>
-                                            <div className="col-md-3 m-1 text-center">{catalog.base_price}</div>
-                                            <div className="col-md-5  m-1 text-center">
-                                                {sold.includes(catalog.id) ? (
-                                                    'SOLD'
-                                                ) : (
-                                                    <div>
-                                                        {start !== catalog.id && (
-                                                            <button
-                                                                className="btn btn-success m-1"
-                                                                disabled={start && start !== catalog.id}
-                                                                onClick={() => this.markBiddingStart(catalog.id)}>
-                                                                Start
-                                                            </button>
-                                                        )}
-                                                        {start && (
-                                                            <button
-                                                                className="btn btn-danger m-1"
-                                                                disabled={start && start !== catalog.id}
-                                                                onClick={event => this.markSold(event, catalog.id)}>
-                                                                Sold
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                )}
+                                        <>
+                                            <div className="row mb-1" key={catalog.id}>
+                                                <div className="col-md-3 p-2 text-center">{catalog.name}</div>
+                                                <div className="col-md-3 p-2 text-center">{catalog.base_price}</div>
+                                                <div className="col-md-6  text-center">
+                                                    {sold.includes(catalog.id) ? (
+                                                        'SOLD'
+                                                    ) : (
+                                                        <div>
+                                                            {start !== catalog.id && (
+                                                                <button
+                                                                    className="btn btn-success m-1"
+                                                                    disabled={start && start !== catalog.id}
+                                                                    onClick={() => this.markBiddingStart(catalog.id)}>
+                                                                    Start
+                                                                </button>
+                                                            )}
+                                                            {start && (
+                                                                <>
+                                                                    {start === catalog.id && (
+                                                                        <button
+                                                                            className="btn btn-danger m-1"
+                                                                            disabled={start && start !== catalog.id}
+                                                                            onClick={event => {
+                                                                                pauseCatalog === catalog.id
+                                                                                    ? this.markResume(catalog)
+                                                                                    : this.markPause(catalog);
+                                                                            }}>
+                                                                            {pauseCatalog === catalog.id
+                                                                                ? 'Resume'
+                                                                                : 'Pause'}
+                                                                        </button>
+                                                                    )}
+                                                                    <button
+                                                                        className="btn btn-danger m-1"
+                                                                        disabled={start && start !== catalog.id}
+                                                                        onClick={event => {
+                                                                            pauseCatalog === catalog.id
+                                                                                ? this.deleteBid(event, catalog)
+                                                                                : this.markSold(
+                                                                                      event,
+                                                                                      catalog.id,
+                                                                                      catalog
+                                                                                  );
+                                                                        }}>
+                                                                        {pauseCatalog === catalog.id
+                                                                            ? 'Delete'
+                                                                            : 'Sold'}
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
+                                            {pauseCatalog === catalog.id && allBids.length > 1 && (
+                                                <div className="row">
+                                                    <div className="col-md-3 font-weight-bold text-center">Bid</div>
+                                                    <div className="col-md-3 font-weight-bold text-center">Name</div>
+                                                    <div className="col-md-6 font-weight-bold text-center">Delete</div>
+                                                </div>
+                                            )}
+                                            {pauseCatalog === catalog.id &&
+                                                allBids &&
+                                                allBids.map(
+                                                    bid =>
+                                                        bid.currentBid !== 0 && (
+                                                            <div className="row">
+                                                                <div className="col-md-3 text-center">
+                                                                    {bid.currentBid}
+                                                                </div>
+                                                                <div className="col-md-3 text-center">
+                                                                    {bid.bidHolderName}
+                                                                </div>
+                                                                <div className="col-md-6 text-center">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        name={`bidDelete&{bid.currentBid}`}
+                                                                        checked={deleteBid.includes(
+                                                                            bid.currentBid.toString()
+                                                                        )}
+                                                                        onChange={e => this.handleChecked(e)}
+                                                                        id={bid.currentBid}
+                                                                        value={bid.currentBid}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                )}
+                                        </>
                                     ))}
                                 </div>
                             )}

@@ -29,14 +29,14 @@ class Auction extends Component {
             bid_value: 0,
             currentBidHolder: '',
             bidHolderName: '',
-            is_open: false
+            is_open: false,
+            biddingPaused: false
         };
         this.handleBid = this.handleBid.bind(this);
     }
 
     componentDidMount() {
         this.checkStatus();
-        this.isAuthenticated();
     }
     isAuthenticated = () => {
         const {namespace} = this.state;
@@ -123,7 +123,8 @@ class Auction extends Component {
         });
         socket.on('auctionClosed', message => {
             this.setState({
-                is_open: false
+                is_open: false,
+                biddingPaused: false
             });
             socket.close();
         });
@@ -147,6 +148,23 @@ class Auction extends Component {
                 catalog
             });
         });
+        socket.on('pausedBidding', () => {
+            this.setState({
+                biddingPaused: true
+            });
+        });
+        socket.on('resumeBidding', () => {
+            this.setState({
+                biddingPaused: false
+            });
+        });
+        socket.on('catalogSold', (catalogName, bidDetails) => {
+            Swal.fire({
+                title: `${bidDetails.bidHolderName} buy ${catalogName} at ${bidDetails.currentBid}`,
+                showConfirmButton: true,
+                timer: 3000
+            });
+        });
     };
 
     socketConnect() {
@@ -159,11 +177,16 @@ class Auction extends Component {
         if (user == null || user.role != 'User') {
             window.location.href = '/login';
         } else {
-            this.setState({
-                user_id: user.user_id,
-                userName: user.username,
-                namespace: url_slug
-            });
+            this.setState(
+                {
+                    user_id: user.user_id,
+                    userName: user.username,
+                    namespace: url_slug
+                },
+                () => {
+                    this.isAuthenticated();
+                }
+            );
         }
     }
 
@@ -173,56 +196,53 @@ class Auction extends Component {
 
     render() {
         let isCurrentBidByU = false;
-        const {catalog, loading} = this.state;
+        const {catalog, biddingPaused} = this.state;
         if (this.state.user_id == this.state.currentBidHolder) {
             isCurrentBidByU = true;
         }
         return (
-            <>
-                {!loading && (
-                    <div className="text-center" style={style.formBox}>
-                        <h2>Auction: {this.state.namespace}</h2>
-                        <div className="container">
-                            {this.state.is_open == false ? (
-                                <p>Auction is either closed or not open yet!</p>
-                            ) : (
-                                <>
-                                    {catalog && (
-                                        <div className="mt-5 mb-5">
-                                            <h5>Catalog Details</h5>
+            <div className={biddingPaused ? 'text-center pause-catalog' : 'text-center'} style={style.formBox}>
+                <div className="pause-dialog">Auction is pause, Wait for resume</div>
+                <h2>Auction: {this.state.namespace}</h2>
+                <div className="container">
+                    {this.state.is_open == false ? (
+                        <p>Auction is either closed or not open yet!</p>
+                    ) : (
+                        <div>
+                            {catalog && (
+                                <div className="mt-5 mb-5">
+                                    <h5>Catalog Details</h5>
 
-                                            <div className="row font-weight-bold">
-                                                <div className="col-md-6 text-capitalize">Name</div>
-                                                <div className="col-md-6 text-capitalize">Base Price</div>
-                                            </div>
-                                            <div className="row">
-                                                <div className="col-md-6 text-capitalize">{catalog.name}</div>
-                                                <div className="col-md-6 text-capitalize">{catalog.base_price}</div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {catalog ? (
-                                        <>
-                                            <h3>CurrentBid: {this.state.bid_value}</h3>
-                                            <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
-                                            <button
-                                                className="btn btn-primary"
-                                                disabled={isCurrentBidByU}
-                                                onClick={this.handleBid}>
-                                                Bid Higher
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="text-center text-danger">
-                                            Wait for the admin to show you the catalog
-                                        </div>
-                                    )}
+                                    <div className="row font-weight-bold">
+                                        <div className="col-md-6 text-capitalize">Name</div>
+                                        <div className="col-md-6 text-capitalize">Base Price</div>
+                                    </div>
+                                    <div className="row">
+                                        <div className="col-md-6 text-capitalize">{catalog.name}</div>
+                                        <div className="col-md-6 text-capitalize">{catalog.base_price}</div>
+                                    </div>
+                                </div>
+                            )}
+                            {catalog ? (
+                                <>
+                                    <h3>CurrentBid: {this.state.bid_value}</h3>
+                                    <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
+                                    <button
+                                        className="btn btn-primary"
+                                        disabled={isCurrentBidByU}
+                                        onClick={this.handleBid}>
+                                        Bid Higher
+                                    </button>
                                 </>
+                            ) : (
+                                <div className="text-center text-danger">
+                                    Wait for the admin to show you the catalog
+                                </div>
                             )}
                         </div>
-                    </div>
-                )}
-            </>
+                    )}
+                </div>
+            </div>
         );
     }
 }

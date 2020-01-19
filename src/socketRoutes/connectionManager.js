@@ -8,7 +8,12 @@ let clientSockets = {}; // {"room1": {"u1": socket, "u2": socket}, "room2": {"u3
 //Auction owner creating a room
 function ownerSocket(socket, namespace, owner_id, max_user) {
     //update adminSockets
-    adminSockets[namespace] = {socket: socket, id: owner_id, max_user};
+    adminSockets[namespace] = {
+        socket: socket,
+        id: owner_id,
+        max_user,
+        paused: false
+    };
     //add a entry in clientSockets for owner's room
     clientSockets[namespace] = {};
     //initialize bid
@@ -24,7 +29,7 @@ function currentCatalog(socket, namespace, owner_id, catalog) {
     };
     socket.broadcast.to(namespace).emit('currentCatalog', catalog);
 }
-function stopBidding(io, socket, namespace, user_id) {
+function stopBidding(io, socket, namespace, user_id, catalogName) {
     adminSockets[namespace] = {
         ...adminSockets[namespace],
         socket,
@@ -32,10 +37,22 @@ function stopBidding(io, socket, namespace, user_id) {
         currentCatalog: ''
     };
     const bidDetails = bidManager.getCurrentBid(namespace);
+    socket.broadcast.to(namespace).emit('catalogSold', catalogName, bidDetails);
     socket.emit('stopBiddingSuccess', bidDetails);
     socket.broadcast.to(namespace).emit('currentCatalogSold', adminSockets[namespace].currentCatalog);
-    bidManager.handleBid(io, namespace, '-', -1, 0);
+    bidManager.resetBid(io, namespace, '-', -1, 0);
     return;
+}
+
+function pauseBidding(io, socket, namespace, owner_id, catalog) {
+    adminSockets[namespace].paused = true;
+    let bidDetails = bidManager.showAllBid(namespace);
+    socket.emit('allBids', bidDetails);
+    socket.broadcast.to(namespace).emit('pausedBidding');
+}
+
+function resumeBidding(io, socket, namespace, owner_id, catalog) {
+    socket.broadcast.to(namespace).emit('resumeBidding');
 }
 
 //Closing a auction
@@ -84,6 +101,9 @@ function joinAuction(socket, namespace, user_id) {
         // send current bidDetails to this newly added client
         bidManager.showCurrentBid(socket, namespace);
         socket.emit('joinedSuccessful');
+        if (adminSockets[namespace].paused) {
+            socket.emit('pausedBidding');
+        }
         //inform owner with updated list of active clientIds
         adminSockets[namespace].socket.emit('onlineUsers', Object.keys(clientSockets[namespace]));
     }
@@ -104,5 +124,7 @@ module.exports = {
     adminSockets,
     currentCatalog,
     stopBidding,
-    leaveAuction
+    leaveAuction,
+    pauseBidding,
+    resumeBidding
 };

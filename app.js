@@ -62,10 +62,19 @@ io.sockets.on('connection', socket => {
     socket.on('biddingStart', (namespace, owner_id, catalog) => {
         handleConnections.currentCatalog(socket, namespace, owner_id, catalog);
     });
-    socket.on('biddingStop', (owner_id, namespace) => {
-        handleConnections.stopBidding(io, socket, namespace, owner_id);
+    socket.on('biddingStop', (owner_id, namespace, catalogName) => {
+        handleConnections.stopBidding(io, socket, namespace, owner_id, catalogName);
     });
     socket.on('disconnect', reason => {
         handleConnections.leaveAuction(socket, socket.user_id, socket.namespace);
+    });
+    socket.on('pauseBidding', (owner_id, namespace, catalog) => {
+        handleConnections.pauseBidding(io, socket, namespace, owner_id, catalog);
+    });
+    socket.on('resumeBidding', (owner_id, namespace, catalog) => {
+        handleConnections.resumeBidding(io, socket, namespace, owner_id, catalog);
+    });
+    socket.on('deleteBids', (allBids, owner_id, namespace, catalog) => {
+        handleBiding.deleteBids(io, socket, allBids, namespace, owner_id, catalog);
     });
 });

@@ -38,3 +38,28 @@ td {
 .text-red {
   color: red;
 }
+.actionButton {
+  justify-content: space-around;
+}
+.pause-catalog {
+  opacity: 0.4;
+  z-index: 5;
+  background-color: rgb(196, 190, 190);
+  position: relative;
+}
+.pause-catalog .pause-dialog {
+  position: absolute;
+  top: 48%;
+  width: 100%;
+  z-index: 10;
+  opacity: 1;
+  font-weight: 900;
+  font-size: 20px;
+  display: block !important;
+  color: red;
+  background-color: white;
+  border: 2px solid darkgrey;
+}
+.pause-dialog {
+  display: none;
+}
