@@ -6,9 +6,9 @@ let adminSockets = {}; // {"admin1": {socket, id}, "admin2": {socket, id}};
 let clientSockets = {}; // {"room1": {"u1": socket, "u2": socket}, "room2": {"u3": socket}}
 
 //Auction owner creating a room
-function ownerSocket(socket, namespace, owner_id) {
+function ownerSocket(socket, namespace, owner_id, max_user) {
     //update adminSockets
-    adminSockets[namespace] = {socket: socket, id: owner_id};
+    adminSockets[namespace] = {socket: socket, id: owner_id, max_user};
     //add a entry in clientSockets for owner's room
     clientSockets[namespace] = {};
     //initialize bid
@@ -63,15 +63,16 @@ function closeAuction(socket, io, namespace, owner_id) {
 
 //Handling new client connection for a specific auction
 function joinAuction(socket, namespace, user_id) {
-    //store user_id & namespace data in socket session for this client
-    socket.user_id = user_id;
-    socket.namespace = namespace;
-
     //check is auction open
     if (clientSockets[namespace] === undefined) {
         //no room found (auction is closed or does not exist)
         socket.emit('auctionClosed', 'Auction is either closed or not open yet!');
+    } else if (Object.keys(clientSockets[namespace]).length + 1 > adminSockets[namespace].max_user) {
+        socket.emit('max_limit_exceeded');
     } else {
+        //store user_id & namespace data in socket session for this client
+        socket.user_id = user_id;
+        socket.namespace = namespace;
         //if auction is live
         //update clinetSockets by adding client entry to correct room
         clientSockets[namespace][user_id] = socket;
@@ -80,8 +81,15 @@ function joinAuction(socket, namespace, user_id) {
         socket.emit('currentCatalog', adminSockets[namespace].currentCatalog);
         // send current bidDetails to this newly added client
         bidManager.showCurrentBid(socket, namespace);
-
+        socket.emit('joinedSuccessful');
         //inform owner with updated list of active clientIds
+        adminSockets[namespace].socket.emit('onlineUsers', Object.keys(clientSockets[namespace]));
+    }
+}
+
+function leaveAuction(socket, user_id, namespace) {
+    if (user_id && namespace && clientSockets[namespace] != undefined) {
+        delete clientSockets[namespace][user_id];
         adminSockets[namespace].socket.emit('onlineUsers', Object.keys(clientSockets[namespace]));
     }
 }
@@ -93,5 +101,6 @@ module.exports = {
     clientSockets,
     adminSockets,
     currentCatalog,
-    stopBidding
+    stopBidding,
+    leaveAuction
 };

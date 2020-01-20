@@ -146,7 +146,7 @@ class AdminPanel extends Component {
         //once connected to server request to openAuction
         socket = io.connect();
         socket.on('connect', () => {
-            socket.emit('openAuction', this.state.url_slug, this.state.owner_id);
+            socket.emit('openAuction', this.state.url_slug, this.state.owner_id, this.state.max_users);
             const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
             const data = {owner_id, namespace};
             socket.on('stopBiddingSuccess', bidDetails => {

@@ -47,8 +47,8 @@ const handleBiding = require('./src/socketRoutes/bidManager');
 
 //socket routes
 io.sockets.on('connection', socket => {
-    socket.on('openAuction', (namespace, owner_id) => {
-        handleConnections.ownerSocket(socket, namespace, owner_id);
+    socket.on('openAuction', (namespace, owner_id, max_user) => {
+        handleConnections.ownerSocket(socket, namespace, owner_id, max_user);
     });
     socket.on('closeAuction', (namespace, owner_id) => {
         handleConnections.closeAuction(socket, io, namespace, owner_id);
@@ -64,5 +64,8 @@ io.sockets.on('connection', socket => {
     });
     socket.on('biddingStop', (owner_id, namespace) => {
         handleConnections.stopBidding(io, socket, namespace, owner_id);
+    });
+    socket.on('disconnect', reason => {
+        handleConnections.leaveAuction(socket, socket.user_id, socket.namespace);
     });
 });
