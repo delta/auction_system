@@ -88,7 +88,7 @@ function joinAuction(socket, namespace, user_id) {
 }
 
 function leaveAuction(socket, user_id, namespace) {
-    if (user_id && namespace) {
+    if (user_id && namespace && clientSockets[namespace] != undefined) {
         delete clientSockets[namespace][user_id];
         adminSockets[namespace].socket.emit('onlineUsers', Object.keys(clientSockets[namespace]));
     }
