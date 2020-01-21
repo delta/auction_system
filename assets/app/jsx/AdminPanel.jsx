@@ -6,6 +6,7 @@ import {notifyError, notifySuccess} from '../Common/common.js';
 import {ToastContainer} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Swal from 'sweetalert2';
+import ManageCatalog from './ManageCatalog.jsx';
 
 const style = {
     formBox: {
@@ -28,6 +29,7 @@ class AdminPanel extends Component {
             owner_id: '',
             can_register: false,
             is_open: false,
+            manageCatalog: false,
             url_slug: '',
             max_users: 0,
             catalogs: [],
@@ -40,7 +42,8 @@ class AdminPanel extends Component {
             password: '',
             pauseCatalog: '',
             allBids: [],
-            deleteBid: []
+            deleteBid: [],
+            autoPlay: false
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -120,12 +123,18 @@ class AdminPanel extends Component {
     };
     getCatalog = data => {
         if (this.state.is_open) {
+            console.log('idnc');
             dataFetch('/getCatalog', data)
                 .then(response => {
+                    console.log(response);
                     if (response.status_code == 200) {
+                        console.log('dkjbad');
+                        const unsold = response.message.map(catalog => catalog.id);
+                        console.log(unsold);
                         this.setState(
                             {
-                                catalogs: response.message
+                                catalogs: response.message,
+                                unsold: unsold
                             },
                             () => {
                                 this.getRegisteredUser();
@@ -321,11 +330,13 @@ class AdminPanel extends Component {
 
     markSold = (event, id, catalog) => {
         event.preventDefault();
-        const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
+        const {sold, catalogs, owner_id, url_slug: namespace, unsold, autoPlay} = this.state;
         if (sold.includes(id)) {
             return;
         }
         sold.push(id);
+        unsold.splice(unsold.indexOf(id), 1);
+        console.log('unsold ', unsold);
         this.setState(
             {
                 sold,
@@ -335,6 +346,7 @@ class AdminPanel extends Component {
             () => {}
         );
         socket.emit('biddingStop', owner_id, namespace, catalog.name);
+        autoPlay && this.markBiddingStart(unsold[0]);
     };
     markBiddingStart = id => {
         this.setState(
@@ -387,6 +399,23 @@ class AdminPanel extends Component {
             deleteBid
         });
     };
+    manageCatalog = () => {
+        this.setState(
+            {
+                manageCatalog: !this.state.manageCatalog
+            },
+            () => {
+                if (!this.state.manageCatalog) {
+                    this.getCatalog({owner_id: this.state.owner_id});
+                }
+            }
+        );
+    };
+    toggleAutoPlay = () => {
+        this.setState({
+            autoPlay: !this.state.autoPlay
+        });
+    };
 
     render() {
         const {
@@ -404,7 +433,8 @@ class AdminPanel extends Component {
             password,
             pauseCatalog,
             allBids,
-            deleteBid
+            deleteBid,
+            manageCatalog
         } = this.state;
         if (q_type == 'add_config') {
             return (
@@ -504,7 +534,39 @@ class AdminPanel extends Component {
                         draggable={false}
                         rtl={false}
                     />
-                    <h2>AdminPanel : {url_slug}</h2>
+                    <div class="modal fade" id="myModal" role="dialog">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header d-flex justify-content-between">
+                                    <div>Manage Catalog</div>
+                                    <div onClick={this.manageCatalog}>
+                                        <button
+                                            type="button"
+                                            class="close"
+                                            data-toggle="modal"
+                                            data-target="#myModal"
+                                            aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="modal-body">
+                                    {manageCatalog && (
+                                        <ManageCatalog owner_id={this.state.owner_id} catalogId={this.state.start} />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="d-flex justify-content-between">
+                        <div>
+                            <h2>AdminPanel : {url_slug}</h2>
+                        </div>
+                        <div>
+                            <input type="checkbox" data-toggle="toggle" onChange={this.toggleAutoPlay} />
+                            AutoPlay
+                        </div>
+                    </div>
                     <div className="row">
                         <div className="col-md-4 border-right">
                             <h5>
@@ -532,6 +594,17 @@ class AdminPanel extends Component {
                             </button>
                             <button className="btn btn-danger" onClick={this.closeAuction} disabled={!is_open}>
                                 Close Auction
+                            </button>
+                            {/* <button className="btn btn-warning" onClick={this.manageCatalog}>
+
+                                {!manageCatalog ? 'Manage Catalog' : 'Back'}
+                            </button> */}
+                            <button
+                                class="btn btn-warning"
+                                data-toggle="modal"
+                                data-target="#myModal"
+                                onClick={this.manageCatalog}>
+                                Manage Catalog
                             </button>
                             {this.state.is_open && (
                                 <div className="mt-5">

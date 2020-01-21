@@ -8,6 +8,7 @@ import AdminPanel from './AdminPanel.jsx';
 import Home from './Home.jsx';
 import Login from './Login.jsx';
 import Auction from './Auction.jsx';
+import ManageCatalog from './ManageCatalog.jsx';
 
 ReactDOM.render(
     <BrowserRouter>
@@ -18,6 +19,7 @@ ReactDOM.render(
             <Route exact path="/home" component={Home} />
             <Route exact path="/login" component={Login} />
             <Route exact path="/auction/:url_slug/:id" component={Auction} />
+            <Route exact path="/manage-catalog" component={ManageCatalog} />
             <Route path="*" component={PageNotFound} />
         </Switch>
     </BrowserRouter>,
