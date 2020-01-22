@@ -46,5 +46,19 @@ app.post('/userRegisteration', function(req, res) {
             Sendresponse(res, 400, 'Error registering user ', err);
         });
 });
+app.post('/getUserDetails', (req, res) => {
+    models.User.findAll({
+        where: {
+            id: req.body.ids
+        },
+        attributes: ['name', 'email', 'contact', 'country']
+    })
+        .then(response => {
+            Sendresponse(res, 200, response);
+        })
+        .catch(err => {
+            Sendresponse(res, 400, ' Error in fetching user details');
+        });
+});
 
 module.exports = app;

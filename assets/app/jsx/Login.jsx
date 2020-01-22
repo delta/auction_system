@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import dataFetch from './DataFetch';
 import {Form, Field} from 'react-final-form';
+import {notifyError} from '../Common/common';
 
 const style = {
     formBox: {
@@ -31,7 +32,7 @@ class Login extends Component {
                 }
             })
             .catch(err => {
-                console.log(err);
+                notifyError(err.response);
             });
     }
 

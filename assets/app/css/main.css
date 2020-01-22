@@ -1,24 +1,37 @@
 html {
-    height: 100%;
-    scroll-behavior: smooth;
+  height: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
-    margin:0;
-    padding:0;
-    height: auto;
+  margin: 0;
+  padding: 0;
+  height: auto;
 }
 
-*{
-    font-family: 'Open Sans', sans-serif !important;
+* {
+  font-family: "Open Sans", sans-serif !important;
 }
 
 div span {
-    color: red;
+  color: red;
 }
-.form-row{
-    margin-bottom: 5%;    
+.form-row {
+  margin-bottom: 5%;
 }
-.actionButton{
-    justify-content: space-around;
+.actionButton {
+  justify-content: space-around;
+}
+.online-user-list {
+  cursor: pointer;
+}
+ul {
+  list-style: none !important;
+}
+table {
+  display: flex;
+  justify-content: center;
+}
+td {
+  padding: 5px;
 }

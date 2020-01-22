@@ -5,13 +5,14 @@ import io from 'socket.io-client';
 import {notifyError, notifySuccess} from '../Common/common.js';
 import {ToastContainer} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Swal from 'sweetalert2';
 
 const style = {
     formBox: {
-        width: '500px',
+        width: '600px',
         height: '600px',
         position: 'absolute',
-        left: '50%',
+        left: '45%',
         top: '50%',
         margin: '-300px 0 0 -150px'
     }
@@ -32,7 +33,9 @@ class AdminPanel extends Component {
             catalogs: [],
             sold: [],
             start: '',
-            clientIds: []
+            activeUsers: [],
+            clientIds: [],
+            selectedUser: ''
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -133,17 +136,16 @@ class AdminPanel extends Component {
                         },
                         () => {
                             this.getCatalog(data);
+                            notifySuccess(response.message);
                         }
                     );
                 } else {
-                    notifySuccess(response.message);
                 }
             })
             .catch(err => {
                 notifyError(err.response);
             });
 
-        //once connected to server request to openAuction
         socket = io.connect();
         socket.on('connect', () => {
             socket.emit('openAuction', this.state.url_slug, this.state.owner_id, this.state.max_users);
@@ -177,7 +179,6 @@ class AdminPanel extends Component {
                 );
             });
         });
-        // });
         socket.on('success', message => {
             notifySuccess(message);
         });
@@ -185,6 +186,20 @@ class AdminPanel extends Component {
             this.setState({
                 clientIds: message
             });
+            const idData = {ids: message};
+            dataFetch('/getUserDetails', idData)
+                .then(response => {
+                    if (response.status_code == 200) {
+                        this.setState({
+                            activeUsers: response.message
+                        });
+                    } else {
+                        notifyError('Error Fetching Active User');
+                    }
+                })
+                .catch(err => {
+                    notifyError(err.response);
+                });
         });
     }
 
@@ -197,6 +212,8 @@ class AdminPanel extends Component {
                 if (response.status_code == 200) {
                     this.setState({
                         is_open: false,
+                        activeUsers: [],
+                        selectedUsers: '',
                         clientIds: []
                     });
                 } else {
@@ -204,12 +221,53 @@ class AdminPanel extends Component {
                 }
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError(response.message);
             });
 
         //emit close auction
         socket.emit('closeAuction', this.state.url_slug, this.state.owner_id);
     }
+    showUserDetail = user => {
+        this.setState(
+            {
+                selectedUser: user
+            },
+            () => {
+                const {selectedUser} = this.state;
+                Swal.fire({
+                    title: 'User Details',
+                    html: `
+            <hr/>
+            <table>
+            <tr>
+                <td>Name: </td>
+                <td>${selectedUser.name}</td>
+            </tr>
+            <tr>
+                <td>Email: </td>
+                <td>${selectedUser.email}</td>
+            </tr>
+            <tr>
+                <td>Contact: </td>
+                <td>${selectedUser.contact}</td>
+            </tr>
+            <tr>
+                <td>Country: </td>
+                <td>${selectedUser.country}</td>
+            </tr>
+            </table>
+        `,
+                    showClass: {
+                        popup: 'animated fadeInDown faster'
+                    },
+                    hideClass: {
+                        popup: 'animated fadeOutUp faster'
+                    }
+                });
+            }
+        );
+    };
+
     markSold = (event, id) => {
         event.preventDefault();
         const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
@@ -237,8 +295,19 @@ class AdminPanel extends Component {
     };
 
     render() {
-        const {catalogs, sold, start} = this.state;
-        if (this.state.q_type == 'add_config') {
+        const {
+            activeUsers,
+            q_type,
+            url_slug,
+            max_users,
+            is_open,
+            can_register,
+            clientIds,
+            catalogs,
+            sold,
+            start
+        } = this.state;
+        if (q_type == 'add_config') {
             return (
                 <div>
                     <div className="container" style={style.formBox}>
@@ -246,10 +315,10 @@ class AdminPanel extends Component {
                         <Form
                             onSubmit={this.onSubmit}
                             initialValues={{
-                                url_slug: this.state.url_slug,
-                                max_users: this.state.max_users,
-                                is_open: this.state.is_open,
-                                can_register: this.state.can_register
+                                url_slug: url_slug,
+                                max_users: max_users,
+                                is_open: is_open,
+                                can_register: can_register
                             }}
                             validate={values => {
                                 const errors = {};
@@ -311,7 +380,7 @@ class AdminPanel extends Component {
                   </Field> */}
                                     <div className="from-row">
                                         <button className="btn btn-primary" type="submit" disabled={submitting}>
-                                            {this.state.q_type == 'add_config' ? 'Add' : 'Update'}
+                                            {q_type == 'add_config' ? 'Add' : 'Update'}
                                         </button>
                                     </div>
                                 </form>
@@ -322,7 +391,7 @@ class AdminPanel extends Component {
             );
         } else {
             return (
-                <div className="container text-center" style={style.formBox}>
+                <div className="container" style={style.formBox}>
                     <ToastContainer
                         position="top-right"
                         hideProgressBar={true}
@@ -332,58 +401,72 @@ class AdminPanel extends Component {
                         draggable={false}
                         rtl={false}
                     />
-                    <h2>AdminPanel : {this.state.url_slug}</h2>
-                    <h3>
-                        UsersCount: {this.state.clientIds.length}/{this.state.max_users}
-                    </h3>
-                    <h6>ActiveUsers:</h6>
-                    <p>{this.state.clientIds.join(',')}</p>
-                    <button className="btn btn-primary" onClick={this.openAuction} disabled={this.state.is_open}>
-                        Open Auction
-                    </button>
-                    <button className="btn btn-danger" onClick={this.closeAuction} disabled={!this.state.is_open}>
-                        Close Auction
-                    </button>
-
-                    {this.state.is_open && (
-                        <div className="mt-5">
-                            <div className="row">
-                                <div className="col-md-3 font-weight-bold text-center">Name</div>
-                                <div className="col-md-3 font-weight-bold text-center">Price</div>
-                                <div className="col-md-6 font-weight-bold text-center">Status</div>
-                            </div>
-                            {catalogs.map(catalog => (
-                                <div className="row" key={catalog.id}>
-                                    <div className="col-md-3 m-1 text-center">{catalog.name}</div>
-                                    <div className="col-md-3 m-1 text-center">{catalog.base_price}</div>
-                                    <div className="col-md-5  m-1 text-center">
-                                        {sold.includes(catalog.id) ? (
-                                            'SOLD'
-                                        ) : (
-                                            <div>
-                                                {start !== catalog.id && (
-                                                    <button
-                                                        className="btn btn-success m-1"
-                                                        disabled={start && start !== catalog.id}
-                                                        onClick={() => this.markBiddingStart(catalog.id)}>
-                                                        Start
-                                                    </button>
-                                                )}
-                                                {start && (
-                                                    <button
-                                                        className="btn btn-danger m-1"
-                                                        disabled={start && start !== catalog.id}
-                                                        onClick={event => this.markSold(event, catalog.id)}>
-                                                        Sold
-                                                    </button>
+                    <h2>AdminPanel : {url_slug}</h2>
+                    <div className="row">
+                        <div className="col-md-4 border-right">
+                            <h5>
+                                UsersCount: {clientIds.length}/{max_users}
+                            </h5>
+                            <h6>ActiveUsers:</h6>
+                            <ul>
+                                {activeUsers &&
+                                    activeUsers.map(user => (
+                                        <li
+                                            className="font-weight-bolder text-success online-user-list"
+                                            onClick={() => this.showUserDetail(user)}>
+                                            {user.name}
+                                        </li>
+                                    ))}
+                            </ul>
+                        </div>
+                        <div className="col-md-8">
+                            <button className="btn btn-primary" onClick={this.openAuction} disabled={is_open}>
+                                Open Auction
+                            </button>
+                            <button className="btn btn-danger" onClick={this.closeAuction} disabled={!is_open}>
+                                Close Auction
+                            </button>
+                            {this.state.is_open && (
+                                <div className="mt-5">
+                                    <div className="row">
+                                        <div className="col-md-3 font-weight-bold text-center">Name</div>
+                                        <div className="col-md-3 font-weight-bold text-center">Price</div>
+                                        <div className="col-md-6 font-weight-bold text-center">Status</div>
+                                    </div>
+                                    {catalogs.map(catalog => (
+                                        <div className="row" key={catalog.id}>
+                                            <div className="col-md-3 m-1 text-center">{catalog.name}</div>
+                                            <div className="col-md-3 m-1 text-center">{catalog.base_price}</div>
+                                            <div className="col-md-5  m-1 text-center">
+                                                {sold.includes(catalog.id) ? (
+                                                    'SOLD'
+                                                ) : (
+                                                    <div>
+                                                        {start !== catalog.id && (
+                                                            <button
+                                                                className="btn btn-success m-1"
+                                                                disabled={start && start !== catalog.id}
+                                                                onClick={() => this.markBiddingStart(catalog.id)}>
+                                                                Start
+                                                            </button>
+                                                        )}
+                                                        {start && (
+                                                            <button
+                                                                className="btn btn-danger m-1"
+                                                                disabled={start && start !== catalog.id}
+                                                                onClick={event => this.markSold(event, catalog.id)}>
+                                                                Sold
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
-                                        )}
-                                    </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
             );
         }
