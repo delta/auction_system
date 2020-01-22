@@ -410,7 +410,7 @@ class AdminPanel extends Component {
                             <h6>ActiveUsers:</h6>
                             <ul>
                                 {activeUsers &&
-                                    activeUser.map(user => (
+                                    activeUsers.map(user => (
                                         <li
                                             className="font-weight-bolder text-success online-user-list"
                                             onClick={() => this.showUserDetail(user)}>
