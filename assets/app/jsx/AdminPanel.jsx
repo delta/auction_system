@@ -35,14 +35,16 @@ class AdminPanel extends Component {
             start: '',
             activeUsers: [],
             clientIds: [],
-            selectedUser: ''
+            selectedUser: '',
+            access_type: 'public',
+            password: ''
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
         this.closeAuction = this.closeAuction.bind(this);
     }
 
-    componentWillMount() {
+    componentDidMount() {
         this.initConfig();
     }
 
@@ -55,10 +57,11 @@ class AdminPanel extends Component {
             data.user_id = user.user_id;
             data.q_type = 'get_config';
             //prefetch config details, if it's in db
-            dataFetch('/auctionConfig', data)
+            dataFetch('/getAuctionConfig', data)
                 .then(response => {
-                    if (response.status_code == 200 && response.message != null) {
+                    if (response.status_code == 200 && response.message !== null) {
                         let data = response.message;
+
                         //update state values;
                         this.setState(
                             {
@@ -67,7 +70,9 @@ class AdminPanel extends Component {
                                 can_register: data.can_register == 1 ? true : false,
                                 is_open: data.is_open == 1 ? true : false,
                                 url_slug: data.auction_url,
-                                max_users: data.max_users
+                                max_users: data.max_users,
+                                access_type: data.access_type,
+                                auction_id: data.id
                             },
                             () => {
                                 if (this.state.is_open) {
@@ -88,24 +93,28 @@ class AdminPanel extends Component {
         }
     }
 
-    onSubmit(values) {
+    onSubmit = values => {
+        const {access_type, password} = this.state;
         let data = {...values};
         data.q_type = this.state.q_type;
         data.user_id = this.state.owner_id;
-        dataFetch('/auctionConfig', data)
+        dataFetch('/addAuctionConfig', data)
             .then(response => {
                 this.setState({
                     q_type: 'update_config',
                     can_register: values.can_register == 1 ? true : false,
                     is_open: values.is_open == 1 ? true : false,
                     url_slug: values.url_slug,
-                    max_users: values.max_users
+                    max_users: values.max_users,
+                    auction_id: response.message.id,
+                    access_type: values.access_type ? values.access_type : access_type,
+                    password: values.access_type === 'private' ? values.password : password
                 });
             })
             .catch(err => {
                 notifyError(err.response);
             });
-    }
+    };
     getCatalog = data => {
         if (this.state.is_open) {
             dataFetch('/getCatalog', data)
@@ -127,7 +136,7 @@ class AdminPanel extends Component {
         //update auctionConfig
         let data = {...this.state};
         data.is_open = true;
-        dataFetch('/auctionConfig', data)
+        dataFetch('/updateAuctionConfig', data)
             .then(response => {
                 if (response.status_code == 200) {
                     this.setState(
@@ -183,23 +192,29 @@ class AdminPanel extends Component {
             notifySuccess(message);
         });
         socket.on('onlineUsers', message => {
-            this.setState({
-                clientIds: message
-            });
-            const idData = {ids: message};
-            dataFetch('/getUserDetails', idData)
-                .then(response => {
-                    if (response.status_code == 200) {
-                        this.setState({
-                            activeUsers: response.message
-                        });
-                    } else {
-                        notifyError('Error Fetching Active User');
-                    }
-                })
-                .catch(err => {
-                    notifyError(err.response);
+            dataFetch('/getRegisteredUser', {
+                auction_id: this.state.auction_id
+            }).then(users => {
+                const arrId = users.message.map(user => String(user.user_id));
+                this.setState({
+                    clientIds: message
                 });
+                const mergeArray = Array.from(new Set([...message, ...arrId]));
+                const idData = {ids: mergeArray};
+                dataFetch('/getUserDetails', idData)
+                    .then(response => {
+                        if (response.status_code == 200) {
+                            this.setState({
+                                activeUsers: response.message
+                            });
+                        } else {
+                            notifyError('Error Fetching Active User');
+                        }
+                    })
+                    .catch(err => {
+                        notifyError(err.response);
+                    });
+            });
         });
     }
 
@@ -207,7 +222,7 @@ class AdminPanel extends Component {
         //update auctionConfig
         let data = {...this.state};
         data.is_open = false;
-        dataFetch('/auctionConfig', data)
+        dataFetch('/updateAuctionConfig', data)
             .then(response => {
                 if (response.status_code == 200) {
                     this.setState({
@@ -298,14 +313,16 @@ class AdminPanel extends Component {
         const {
             activeUsers,
             q_type,
+            clientIds,
+            catalogs,
+            sold,
+            start,
             url_slug,
             max_users,
             is_open,
             can_register,
-            clientIds,
-            catalogs,
-            sold,
-            start
+            access_type,
+            password
         } = this.state;
         if (q_type == 'add_config') {
             return (
@@ -315,18 +332,23 @@ class AdminPanel extends Component {
                         <Form
                             onSubmit={this.onSubmit}
                             initialValues={{
-                                url_slug: url_slug,
-                                max_users: max_users,
-                                is_open: is_open,
-                                can_register: can_register
+                                url_slug,
+                                max_users,
+                                is_open,
+                                can_register,
+                                access_type,
+                                password
                             }}
                             validate={values => {
                                 const errors = {};
                                 if (!values.url_slug) {
                                     errors.url_slug = 'Required';
-                                }
-                                if (!values.max_users) {
+                                } else if (!values.max_users) {
                                     errors.max_users = 'Required';
+                                } else if (values.max_users <= 0) {
+                                    errors.max_users = "Max User can't be zero or less then zero";
+                                } else if (values.access_type === 'private' && !values.password) {
+                                    errors.password = 'Required';
                                 }
                                 return errors;
                             }}
@@ -360,6 +382,23 @@ class AdminPanel extends Component {
                                             </div>
                                         )}
                                     </Field>
+                                    <label>Access Type:</label>
+                                    <br />
+                                    <Field name="access_type" className="form-row form-control" component="select">
+                                        <option value="public">Public</option>
+                                        <option value="private">Private</option>
+                                    </Field>
+                                    {values.access_type === 'private' && (
+                                        <Field name="password">
+                                            {({input, meta}) => (
+                                                <div className="form-row">
+                                                    <label>Password</label>
+                                                    <input className="form-control" {...input} type="password" />
+                                                    {meta.error && meta.touched && <span>{meta.error}</span>}
+                                                </div>
+                                            )}
+                                        </Field>
+                                    )}
                                     {/* <Field name="is_open">
                     {({ input, meta }) => (
                       <div className="form-row">
@@ -412,7 +451,11 @@ class AdminPanel extends Component {
                                 {activeUsers &&
                                     activeUsers.map(user => (
                                         <li
-                                            className="font-weight-bolder text-success online-user-list"
+                                            className={`font-weight-bolder online-user-list ${
+                                                !this.state.clientIds.includes(String(user.id))
+                                                    ? 'text-red'
+                                                    : 'text-success'
+                                            }`}
                                             onClick={() => this.showUserDetail(user)}>
                                             {user.name}
                                         </li>

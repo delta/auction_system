@@ -17,6 +17,7 @@ function ownerSocket(socket, namespace, owner_id, max_user) {
 }
 function currentCatalog(socket, namespace, owner_id, catalog) {
     adminSockets[namespace] = {
+        ...adminSockets[namespace],
         socket: socket,
         id: owner_id,
         currentCatalog: catalog
@@ -25,6 +26,7 @@ function currentCatalog(socket, namespace, owner_id, catalog) {
 }
 function stopBidding(io, socket, namespace, user_id) {
     adminSockets[namespace] = {
+        ...adminSockets[namespace],
         socket,
         id: user_id,
         currentCatalog: ''
