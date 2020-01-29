@@ -5,11 +5,13 @@ let bidDetails = {}; // {"room1": {currentBid: 34, bidHolderId: 1}, "room2": {cu
 
 //creating a Bid
 function creatingBid(namespace) {
-    bidDetails[namespace] = {
-        currentBid: 0,
-        bidHolderId: -1,
-        bidHolderName: '-'
-    };
+    bidDetails[namespace] = [
+        {
+            currentBid: 0,
+            bidHolderId: -1,
+            bidHolderName: '-'
+        }
+    ];
     return;
 }
 
@@ -19,25 +21,56 @@ function deleteBid(namespace) {
     return;
 }
 
+function deleteBids(io, socket, allBids, namespace, owner_id, catalog) {
+    let updateBid = allBids.reverse();
+    bidDetails[namespace] = updateBid;
+    socket.broadcast.to(namespace).emit('currentBidStatus', updateBid[updateBid.length - 1]);
+}
+
 //show currentBids
 function showCurrentBid(socket, namespace) {
     //send current bidDetails to this newly added client
-    socket.emit('currentBidStatus', bidDetails[namespace]);
+    let bid = bidDetails[namespace];
+    socket.emit('currentBidStatus', bid[bid.length - 1]);
     return;
 }
 function getCurrentBid(namespace) {
+    let bid = bidDetails[namespace];
+    return bid[bid.length - 1];
+}
+
+function showAllBid(namespace) {
     return bidDetails[namespace];
+}
+function resetBid(io, namespace, user_id, userName, bid_value) {
+    bidDetails[namespace] = [
+        {
+            currentBid: 0,
+            bidHolderId: -1,
+            bidHolderName: '-'
+        }
+    ];
+    let bid = bidDetails[namespace];
+    io.sockets.in(namespace).emit('currentBidStatus', bid[bid.length - 1]);
+    return;
 }
 
 //handle bids for different auctions
 function handleBid(io, namespace, user_id, userName, bid_value) {
     //update bidDetails
-    bidDetails[namespace].currentBid = bid_value;
-    bidDetails[namespace].bidHolderId = user_id;
-    bidDetails[namespace].bidHolderName = userName;
+    const object = {
+        currentBid: bid_value,
+        bidHolderId: user_id,
+        bidHolderName: userName
+    };
+    bidDetails[namespace].push(object);
+    let bid = bidDetails[namespace];
+    // bidDetails[namespace].currentBid = bid_value;
+    // bidDetails[namespace].bidHolderId = user_id;
+    // bidDetails[namespace].bidHolderName = userName;
 
     //brodcast updated bid to all clients in the room
-    io.sockets.in(namespace).emit('currentBidStatus', bidDetails[namespace]);
+    io.sockets.in(namespace).emit('currentBidStatus', bid[bid.length - 1]);
     return;
 }
 
@@ -47,5 +80,8 @@ module.exports = {
     showCurrentBid,
     handleBid,
     bidDetails,
-    getCurrentBid
+    getCurrentBid,
+    showAllBid,
+    deleteBids,
+    resetBid
 };
