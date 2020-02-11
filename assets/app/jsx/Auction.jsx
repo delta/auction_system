@@ -203,37 +203,49 @@ class Auction extends Component {
         return (
             <div className={biddingPaused ? 'text-center pause-catalog' : 'text-center'} style={style.formBox}>
                 <div className="pause-dialog">Auction is pause, Wait for resume</div>
-                <h2>Auction: {this.state.namespace}</h2>
+                <div className="d-flex justify-content-center">
+                    <div className="pl-3">
+                        <h2>Auction: {this.state.namespace}</h2>
+                    </div>
+                </div>
                 <div className="container">
                     {this.state.is_open == false ? (
                         <p>Auction is either closed or not open yet!</p>
                     ) : (
                         <div>
-                            {catalog && (
+                            {catalog ? (
                                 <div className="mt-5 mb-5">
-                                    <h5>Catalog Details</h5>
-
-                                    <div className="row font-weight-bold">
-                                        <div className="col-md-6 text-capitalize">Name</div>
-                                        <div className="col-md-6 text-capitalize">Base Price</div>
-                                    </div>
-                                    <div className="row">
-                                        <div className="col-md-6 text-capitalize">{catalog.name}</div>
-                                        <div className="col-md-6 text-capitalize">{catalog.base_price}</div>
+                                    <div class="card" style={{width: '300px'}}>
+                                        <img
+                                            class="card-img-top"
+                                            src={
+                                                catalog.thumbnail_url
+                                                    ? catalog.thumbnail_url
+                                                    : 'https://image.shutterstock.com/image-vector/auction-label-red-band-sign-260nw-1514047166.jpg'
+                                            }
+                                            alt="Card image"
+                                        />
+                                        <div class="card-body">
+                                            <h5>Catalog Details</h5>
+                                            <div className="row font-weight-bold">
+                                                <div className="col-md-6 text-capitalize">Name</div>
+                                                <div className="col-md-6 text-capitalize">Base Price</div>
+                                            </div>
+                                            <div className="row">
+                                                <div className="col-md-6 text-capitalize">{catalog.name}</div>
+                                                <div className="col-md-6 text-capitalize">{catalog.base_price}</div>
+                                            </div>
+                                        </div>
+                                        <h3>CurrentBid: {this.state.bid_value}</h3>
+                                        <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
+                                        <button
+                                            className="btn btn-primary"
+                                            disabled={isCurrentBidByU}
+                                            onClick={this.handleBid}>
+                                            Bid Higher
+                                        </button>
                                     </div>
                                 </div>
-                            )}
-                            {catalog ? (
-                                <>
-                                    <h3>CurrentBid: {this.state.bid_value}</h3>
-                                    <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
-                                    <button
-                                        className="btn btn-primary"
-                                        disabled={isCurrentBidByU}
-                                        onClick={this.handleBid}>
-                                        Bid Higher
-                                    </button>
-                                </>
                             ) : (
                                 <div className="text-center text-danger">
                                     Wait for the admin to show you the catalog

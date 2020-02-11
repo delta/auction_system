@@ -47,5 +47,65 @@ app.post('/getCatalog', function(req, res) {
             Sendresponse(res, 400, 'Not found Data');
         });
 });
+app.post('/createCatalog', function(req, res) {
+    const {owner_id, name, quantity, base_price, for_sale, description, thumbnail_url} = req.body;
+    models.Catalog.build({
+        owner_id,
+        name,
+        quantity,
+        base_price,
+        for_sale,
+        description,
+        thumbnail_url
+    })
+        .save()
+        .then(response => {
+            Sendresponse(res, 200, 'Created Successfully');
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Error in creating');
+        });
+});
+
+app.post('/deleteCatalog', function(req, res) {
+    const {id} = req.body;
+    models.Catalog.destroy({
+        where: {
+            id
+        }
+    })
+        .then(response => {
+            Sendresponse(res, 200, 'Deleted Successfully');
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Error in deleting');
+        });
+});
+
+app.post('/updateCatalog', function(req, res) {
+    const {id, owner_id, name, quantity, base_price, for_sale, description, thumbnail_url} = req.body;
+    models.Catalog.update(
+        {
+            owner_id,
+            name,
+            quantity,
+            base_price,
+            for_sale,
+            description,
+            thumbnail_url
+        },
+        {
+            where: {
+                id
+            }
+        }
+    )
+        .then(response => {
+            Sendresponse(res, 200, 'Updated Successfully');
+        })
+        .catch(err => {
+            Sendresponse(res, 400, 'Error in Updating');
+        });
+});
 
 module.exports = app;
