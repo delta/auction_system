@@ -145,19 +145,32 @@ class Auction extends Component {
         });
         socket.on('currentCatalogSold', catalog => {
             this.setState({
-                catalog
+                catalog,
+                biddingPaused: false
             });
         });
         socket.on('pausedBidding', () => {
             this.setState({
                 biddingPaused: true
-            });
+            });autoPlay && this.markBiddingStart(unsold[0]);
         });
         socket.on('resumeBidding', () => {
             this.setState({
                 biddingPaused: false
             });
         });
+
+        socket.on("catalogSkip", catalogName => {
+            Swal.fire({
+                title:`${catalogName} has been skipped`,
+                showCloseButton: true,
+                timer: 3000
+            })
+            this.setState({
+                catalog: '',
+                biddingPaused: false
+            })
+        })
         socket.on('catalogSold', (catalogName, bidDetails) => {
             Swal.fire({
                 title: `${bidDetails.bidHolderName} buy ${catalogName} at ${bidDetails.currentBid}`,

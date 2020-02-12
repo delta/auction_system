@@ -29,6 +29,20 @@ function currentCatalog(socket, namespace, owner_id, catalog) {
     };
     socket.broadcast.to(namespace).emit('currentCatalog', catalog);
 }
+
+function skipBidding(io, socket, namespace, user_id, catalogName){
+    adminSockets[namespace] = {
+        ...adminSockets[namespace],
+        socket,
+        id: user_id,
+        currentCatalog: ''
+    }
+
+    socket.broadcast.to(namespace).emit("catalogSkip", catalogName);
+    socket.emit("skipBiddingSuccess");
+    bidManager.resetBid(io,namespace,'-',-1,0);
+}
+
 function stopBidding(io, socket, namespace, user_id, catalogName) {
     adminSockets[namespace] = {
         ...adminSockets[namespace],
@@ -126,5 +140,6 @@ module.exports = {
     stopBidding,
     leaveAuction,
     pauseBidding,
-    resumeBidding
+    resumeBidding,
+    skipBidding
 };
