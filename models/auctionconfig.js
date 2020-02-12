@@ -22,7 +22,8 @@ module.exports = (sequelize, DataTypes) => {
         },
         auction_url: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: false,
+            unique: true
         },
         max_users: {
             type: DataTypes.INTEGER,
