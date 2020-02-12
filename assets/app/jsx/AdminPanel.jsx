@@ -43,7 +43,8 @@ class AdminPanel extends Component {
             pauseCatalog: '',
             allBids: [],
             deleteBid: [],
-            autoPlay: false
+            autoPlay: false,
+            currentIndex : -1
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -224,6 +225,17 @@ class AdminPanel extends Component {
                     }
                 );
             });
+            socket.on("skipBiddingSuccess", catalogName => {
+                const {autoPlay, currentIndex, unsold} = this.state;
+                notifySuccess("Catalog Skipped");
+                if(currentIndex < 0 || currentIndex > unsold.length){
+                    return;
+                }
+
+                if(autoPlay){
+                    this.markBiddingStart(unsold[currentIndex]);
+                }
+            })
         });
         socket.on('success', message => {
             notifySuccess(message);
@@ -328,6 +340,25 @@ class AdminPanel extends Component {
         );
     };
 
+    markBiddingSkip = (event, id, catalogName) => {
+        event.preventDefault();
+        const {sold, catalogs, owner_id, url_slug: namespace, unsold, autoPlay} = this.state;
+        if (sold.includes(id)) {
+            return;
+        }
+        let index = unsold.indexOf(id);
+        index = (index + 1)%unsold.length;
+        this.setState({
+            currentIndex: index,
+            start:'',
+            allBids:[],
+            pauseCatalog: ''
+        });
+
+        socket.emit("biddingSkip",owner_id, namespace, catalogName);
+
+    };
+
     markSold = (event, id, catalog) => {
         event.preventDefault();
         const {sold, catalogs, owner_id, url_slug: namespace, unsold, autoPlay} = this.state;
@@ -341,7 +372,8 @@ class AdminPanel extends Component {
             {
                 sold,
                 start: '',
-                allBids: []
+                allBids: [],
+                pauseCatalog: ''
             },
             () => {}
         );
@@ -631,22 +663,20 @@ class AdminPanel extends Component {
                                                                     Start
                                                                 </button>
                                                             )}
-                                                            {start && (
+                                                            {start === catalog.id && (
                                                                 <>
-                                                                    {start === catalog.id && (
-                                                                        <button
-                                                                            className="btn btn-danger m-1"
-                                                                            disabled={start && start !== catalog.id}
-                                                                            onClick={event => {
-                                                                                pauseCatalog === catalog.id
-                                                                                    ? this.markResume(catalog)
-                                                                                    : this.markPause(catalog);
-                                                                            }}>
-                                                                            {pauseCatalog === catalog.id
-                                                                                ? 'Resume'
-                                                                                : 'Pause'}
-                                                                        </button>
-                                                                    )}
+                                                                    <button
+                                                                        className="btn btn-danger m-1"
+                                                                        disabled={start && start !== catalog.id}
+                                                                        onClick={event => {
+                                                                            pauseCatalog === catalog.id
+                                                                                ? this.markResume(catalog)
+                                                                                : this.markPause(catalog);
+                                                                        }}>
+                                                                        {pauseCatalog === catalog.id
+                                                                            ? 'Resume'
+                                                                            : 'Pause'}
+                                                                    </button>
                                                                     <button
                                                                         className="btn btn-danger m-1"
                                                                         disabled={start && start !== catalog.id}
@@ -663,6 +693,18 @@ class AdminPanel extends Component {
                                                                             ? 'Delete'
                                                                             : 'Sold'}
                                                                     </button>
+                                                                    {pauseCatalog === catalog.id ? (
+                                                                        <button
+                                                                            className="btn btn-danger m-1"
+                                                                            disabled={pauseCatalog !== catalog.id}
+                                                                            onClick={() =>
+                                                                                this.markBiddingSkip(event, catalog.id, catalog.name)
+                                                                            }>
+                                                                            Skip
+                                                                        </button>
+                                                                    ) : (
+                                                                        <div />
+                                                                    )}
                                                                 </>
                                                             )}
                                                         </div>
