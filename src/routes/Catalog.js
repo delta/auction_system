@@ -39,8 +39,15 @@ app.post('/getCatalog', function(req, res) {
                 }
             }).then(items => {
                 let itemIds = items.map(items => items.item_id);
+                catalogs = JSON.parse(JSON.stringify(catalogs));
+                let finalCatalogues = catalogs.map(c => {
+                    if (itemIds.includes(c.id)) {
+                        c.sold = true;
+                    } else c.sold = false;
+                    return c;
+                });
                 let itemAvailable = catalogs.filter(x => !itemIds.includes(x.id));
-                Sendresponse(res, 200, itemAvailable);
+                Sendresponse(res, 200, finalCatalogues);
             });
         })
         .catch(err => {

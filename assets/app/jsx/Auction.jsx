@@ -123,8 +123,7 @@ class Auction extends Component {
         });
         socket.on('auctionClosed', message => {
             this.setState({
-                is_open: false,
-                biddingPaused: false
+                is_open: false
             });
             socket.close();
         });
@@ -134,6 +133,7 @@ class Auction extends Component {
             });
         });
         socket.on('currentCatalog', catalog => {
+            console.log(catalog)
             this.setState({
                 catalog,
                 bid_value: catalog.base_price

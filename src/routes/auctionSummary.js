@@ -36,7 +36,7 @@ app.post('/saveAuctionSummary', function(req, res) {
             Sendresponse(res, 200, 'Saved Successfully');
         })
         .catch(err => {
-            Sendresponse(res, 400, 'Error in Saving');
+            Sendresponse(res, 400, 'Error in Saving - ' + err.message);
         });
 });
 

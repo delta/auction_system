@@ -44,7 +44,6 @@ class ManageCatalog extends Component {
             });
     };
     submitUpdateCatalog = values => {
-        console.log('submit Update Catalog');
         const {updateType, selectedCatalog} = this.state;
         const data = {
             owner_id: this.props.owner_id,
@@ -182,7 +181,6 @@ class ManageCatalog extends Component {
                                         if (!values.base_price) {
                                             errors.base_price = 'Required';
                                         }
-                                        console.log('errors ', errors);
                                         return errors;
                                     }}
                                     render={({handleSubmit, form, submitting, values}) => (

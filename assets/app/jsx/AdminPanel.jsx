@@ -124,18 +124,17 @@ class AdminPanel extends Component {
     };
     getCatalog = data => {
         if (this.state.is_open) {
-            console.log('idnc');
             dataFetch('/getCatalog', data)
                 .then(response => {
-                    console.log(response);
                     if (response.status_code == 200) {
-                        console.log('dkjbad');
-                        const unsold = response.message.map(catalog => catalog.id);
-                        console.log(unsold);
+                        const unsold = response.message.filter(catalog => !catalog.sold).map(c => c.id);
+                        const sold = response.message.filter(catalog => catalog.sold).map(c => c.id);
+                        console.log(unsold, sold)
                         this.setState(
                             {
                                 catalogs: response.message,
-                                unsold: unsold
+                                unsold: unsold,
+                                sold: sold
                             },
                             () => {
                                 this.getRegisteredUser();
@@ -198,7 +197,7 @@ class AdminPanel extends Component {
             socket.emit('openAuction', this.state.url_slug, this.state.owner_id, this.state.max_users);
             const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
             const data = {owner_id, namespace};
-            socket.on('stopBiddingSuccess', bidDetails => {
+            socket.on('stopBiddingSuccess', (catalog, bidDetails) => {
                 this.setState(
                     {
                         bidDetails
@@ -206,9 +205,10 @@ class AdminPanel extends Component {
                     () => {
                         const {currentBid: final_price, bidHolderId: user_id} = this.state.bidDetails;
                         const {autoPlay, unsold} = this.state;
+                        let data = {};
                         data.final_price = final_price;
                         data.user_id = user_id;
-                        data.item_id = sold[sold.length - 1];
+                        data.item_id = catalog.id;
                         dataFetch('/saveAuctionSummary', data)
                             .then(response => {
                                 if (response.status_code == 200) {
@@ -223,7 +223,7 @@ class AdminPanel extends Component {
                             .catch(err => {
                                 notifyError(err.response);
                             });
-                        if (sold.length === catalogs.length) {
+                        if (this.state.sold.length === this.state.catalogs.length) {
                             this.closeAuction();
                         }
                     }
@@ -370,7 +370,6 @@ class AdminPanel extends Component {
         }
         sold.push(id);
         unsold.splice(unsold.indexOf(id), 1);
-        console.log('unsold ', unsold);
         this.setState(
             {
                 sold,
@@ -379,8 +378,19 @@ class AdminPanel extends Component {
                 pauseCatalog: ''
             },
             () => {}
-        );q_type
-        socket.emit('biddingStop', owner_id, namespace, catalog.name);
+        );
+        socket.emit('biddingStop', owner_id, namespace, catalog);
+        if (autoPlay) {
+            let nxtItemId;
+            unsold.some(i => {
+                if (parseInt(i) > parseInt(id)) {
+                    nxtItemId = i;
+                    return true;
+                }
+            });
+            if(!nxtItemId) nxtItemId = unsold[0];
+            this.markBiddingStart(nxtItemId);
+        }
     };
     markBiddingStart = id => {
         this.setState(
@@ -568,15 +578,15 @@ class AdminPanel extends Component {
                         draggable={false}
                         rtl={false}
                     />
-                    <div class="modal fade" id="myModal" role="dialog">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header d-flex justify-content-between">
+                    <div className="modal fade" id="myModal" role="dialog">
+                        <div className="modal-dialog modal-lg">
+                            <div className="modal-content">
+                                <div className="modal-header d-flex justify-content-between">
                                     <div>Manage Catalog</div>
                                     <div onClick={this.manageCatalog}>
                                         <button
                                             type="button"
-                                            class="close"
+                                            className="close"
                                             data-toggle="modal"
                                             data-target="#myModal"
                                             aria-label="Close">
@@ -584,7 +594,7 @@ class AdminPanel extends Component {
                                         </button>
                                     </div>
                                 </div>
-                                <div class="modal-body">
+                                <div className="modal-body">
                                     {manageCatalog && (
                                         <ManageCatalog owner_id={this.state.owner_id} catalogId={this.state.start} updateCatalog={(data) => {this.getCatalog(data)}} />
                                     )}
@@ -634,7 +644,7 @@ class AdminPanel extends Component {
                                 {!manageCatalog ? 'Manage Catalog' : 'Back'}
                             </button> */}
                             <button
-                                class="btn btn-warning"
+                                className="btn btn-warning"
                                 data-toggle="modal"
                                 data-target="#myModal"
                                 onClick={this.manageCatalog}>

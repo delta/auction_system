@@ -43,7 +43,7 @@ function skipBidding(io, socket, namespace, user_id, catalogName) {
     bidManager.resetBid(io, namespace, '-', -1, 0);
 }
 
-function stopBidding(io, socket, namespace, user_id, catalogName) {
+function stopBidding(io, socket, namespace, user_id, catalog) {
     adminSockets[namespace] = {
         ...adminSockets[namespace],
         socket,
@@ -51,8 +51,8 @@ function stopBidding(io, socket, namespace, user_id, catalogName) {
         currentCatalog: ''
     };
     const bidDetails = bidManager.getCurrentBid(namespace);
-    socket.broadcast.to(namespace).emit('catalogSold', catalogName, bidDetails);
-    socket.emit('stopBiddingSuccess', bidDetails);
+    socket.broadcast.to(namespace).emit('catalogSold', catalog.name, bidDetails);
+    socket.emit('stopBiddingSuccess', catalog, bidDetails);
     socket.broadcast.to(namespace).emit('currentCatalogSold', adminSockets[namespace].currentCatalog);
     bidManager.resetBid(io, namespace, '-', -1, 0);
     return;
@@ -66,6 +66,7 @@ function pauseBidding(io, socket, namespace, owner_id, catalog) {
 }
 
 function resumeBidding(io, socket, namespace, owner_id, catalog) {
+    adminSockets[namespace].paused = false;
     socket.broadcast.to(namespace).emit('resumeBidding');
 }
 
