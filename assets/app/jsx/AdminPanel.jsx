@@ -44,7 +44,7 @@ class AdminPanel extends Component {
             allBids: [],
             deleteBid: [],
             autoPlay: false,
-            currentIndex : -1
+            currentIndex: -1
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -205,6 +205,7 @@ class AdminPanel extends Component {
                     },
                     () => {
                         const {currentBid: final_price, bidHolderId: user_id} = this.state.bidDetails;
+                        const {autoPlay, unsold} = this.state;
                         data.final_price = final_price;
                         data.user_id = user_id;
                         data.item_id = sold[sold.length - 1];
@@ -212,6 +213,9 @@ class AdminPanel extends Component {
                             .then(response => {
                                 if (response.status_code == 200) {
                                     notifySuccess(response.message);
+                                    if (autoPlay && unsold.length > 0) {
+                                        this.markBiddingStart(unsold[0]);
+                                    }
                                 } else {
                                     notifyError(response.message);
                                 }
@@ -225,17 +229,17 @@ class AdminPanel extends Component {
                     }
                 );
             });
-            socket.on("skipBiddingSuccess", catalogName => {
+            socket.on('skipBiddingSuccess', catalogName => {
                 const {autoPlay, currentIndex, unsold} = this.state;
-                notifySuccess("Catalog Skipped");
-                if(currentIndex < 0 || currentIndex > unsold.length){
+                notifySuccess('Catalog Skipped');
+                if (currentIndex < 0 || currentIndex > unsold.length) {
                     return;
                 }
 
-                if(autoPlay){
+                if (autoPlay) {
                     this.markBiddingStart(unsold[currentIndex]);
                 }
-            })
+            });
         });
         socket.on('success', message => {
             notifySuccess(message);
@@ -347,16 +351,15 @@ class AdminPanel extends Component {
             return;
         }
         let index = unsold.indexOf(id);
-        index = (index + 1)%unsold.length;
+        index = (index + 1) % unsold.length;
         this.setState({
             currentIndex: index,
-            start:'',
-            allBids:[],
+            start: '',
+            allBids: [],
             pauseCatalog: ''
         });
 
-        socket.emit("biddingSkip",owner_id, namespace, catalogName);
-
+        socket.emit('biddingSkip', owner_id, namespace, catalogName);
     };
 
     markSold = (event, id, catalog) => {
@@ -378,7 +381,6 @@ class AdminPanel extends Component {
             () => {}
         );
         socket.emit('biddingStop', owner_id, namespace, catalog.name);
-        autoPlay && this.markBiddingStart(unsold[0]);
     };
     markBiddingStart = id => {
         this.setState(
@@ -698,7 +700,11 @@ class AdminPanel extends Component {
                                                                             className="btn btn-danger m-1"
                                                                             disabled={pauseCatalog !== catalog.id}
                                                                             onClick={() =>
-                                                                                this.markBiddingSkip(event, catalog.id, catalog.name)
+                                                                                this.markBiddingSkip(
+                                                                                    event,
+                                                                                    catalog.id,
+                                                                                    catalog.name
+                                                                                )
                                                                             }>
                                                                             Skip
                                                                         </button>

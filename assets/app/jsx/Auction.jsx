@@ -135,12 +135,14 @@ class Auction extends Component {
         });
         socket.on('currentCatalog', catalog => {
             this.setState({
-                catalog
+                catalog,
+                bid_value: catalog.base_price
             });
         });
         socket.on('startAuction', catalog => {
             this.setState({
-                catalog: ''
+                catalog: '',
+                biddingPaused: false
             });
         });
         socket.on('currentCatalogSold', catalog => {
@@ -152,7 +154,8 @@ class Auction extends Component {
         socket.on('pausedBidding', () => {
             this.setState({
                 biddingPaused: true
-            });autoPlay && this.markBiddingStart(unsold[0]);
+            });
+            autoPlay && this.markBiddingStart(unsold[0]);
         });
         socket.on('resumeBidding', () => {
             this.setState({
@@ -160,17 +163,17 @@ class Auction extends Component {
             });
         });
 
-        socket.on("catalogSkip", catalogName => {
+        socket.on('catalogSkip', catalogName => {
             Swal.fire({
-                title:`${catalogName} has been skipped`,
+                title: `${catalogName} has been skipped`,
                 showCloseButton: true,
                 timer: 3000
-            })
+            });
             this.setState({
                 catalog: '',
                 biddingPaused: false
-            })
-        })
+            });
+        });
         socket.on('catalogSold', (catalogName, bidDetails) => {
             Swal.fire({
                 title: `${bidDetails.bidHolderName} buy ${catalogName} at ${bidDetails.currentBid}`,
@@ -203,19 +206,47 @@ class Auction extends Component {
         }
     }
 
-    handleBid() {
-        socket.emit('newBid', this.state.namespace, this.state.user_id, this.state.userName, this.state.bid_value + 1);
+    handleBid(bidAmount) {
+        socket.emit('newBid', this.state.namespace, this.state.user_id, this.state.userName, bidAmount);
+    }
+
+    getBidAmount() {
+        const {bid_value} = this.state;
+        let bidString = bid_value + '';
+        let divisor = Math.pow(10, bidString.length - 1);
+        let digit = parseInt(bidString[0]);
+
+        let newBid;
+        if (digit == 1) {
+            newBid = bid_value + divisor / 10;
+        } else if (digit == 2) {
+            newBid = bid_value + (divisor / 10) * 2;
+        } else if (digit == 3 || digit == 4) {
+            let divisor2 = divisor / 10;
+            let digit2 = Math.floor(bid_value / divisor2) % 10;
+            if (digit2 == 0 || digit2 == 8) {
+                newBid = bid_value + (divisor / 10) * 2;
+            } else if (digit2 == 2 || digit2 == 5) {
+                newBid = bid_value + (divisor / 10) * 3;
+            }
+        } else {
+            newBid = bid_value + (divisor / 10) * 5;
+        }
+
+        return newBid;
     }
 
     render() {
         let isCurrentBidByU = false;
-        const {catalog, biddingPaused} = this.state;
+        const {catalog, biddingPaused, bid_value} = this.state;
         if (this.state.user_id == this.state.currentBidHolder) {
             isCurrentBidByU = true;
         }
+        let newBid = this.getBidAmount();
+        let bidDiff = newBid - bid_value;
         return (
             <div className={biddingPaused ? 'text-center pause-catalog' : 'text-center'} style={style.formBox}>
-                <div className="pause-dialog">Auction is pause, Wait for resume</div>
+                <div className="pause-dialog">Auction is paused</div>
                 <div className="d-flex justify-content-center">
                     <div className="pl-3">
                         <h2>Auction: {this.state.namespace}</h2>
@@ -249,13 +280,18 @@ class Auction extends Component {
                                                 <div className="col-md-6 text-capitalize">{catalog.base_price}</div>
                                             </div>
                                         </div>
-                                        <h3>CurrentBid: {this.state.bid_value}</h3>
+                                        <h3>
+                                            CurrentBid:{' '}
+                                            {this.state.bid_value == catalog.base_price ? '-' : this.state.bid_value}
+                                        </h3>
                                         <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
                                         <button
                                             className="btn btn-primary"
                                             disabled={isCurrentBidByU}
-                                            onClick={this.handleBid}>
-                                            Bid Higher
+                                            onClick={() => {
+                                                this.handleBid(newBid);
+                                            }}>
+                                            Bid {newBid} (+{bidDiff})
                                         </button>
                                     </div>
                                 </div>
