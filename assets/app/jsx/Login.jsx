@@ -32,7 +32,7 @@ class Login extends Component {
                 }
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
     }
 

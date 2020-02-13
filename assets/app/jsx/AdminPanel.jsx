@@ -63,6 +63,7 @@ class AdminPanel extends Component {
             let data = {};
             data.user_id = user.user_id;
             data.q_type = 'get_config';
+            data.isAuthRequired = true;
             //prefetch config details, if it's in db
             dataFetch('/getAuctionConfig', data)
                 .then(response => {
@@ -95,7 +96,7 @@ class AdminPanel extends Component {
                     }
                 })
                 .catch(err => {
-                    notifyError(err.response);
+                    notifyError('' + err.response);
                 });
         }
     }
@@ -105,6 +106,7 @@ class AdminPanel extends Component {
         let data = {...values};
         data.q_type = this.state.q_type;
         data.user_id = this.state.owner_id;
+        data.isAuthRequired = true;
         dataFetch('/addAuctionConfig', data)
             .then(response => {
                 this.setState({
@@ -119,17 +121,17 @@ class AdminPanel extends Component {
                 });
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
     };
     getCatalog = data => {
         if (this.state.is_open) {
+            data.isAuthRequired = true;
             dataFetch('/getCatalog', data)
                 .then(response => {
                     if (response.status_code == 200) {
                         const unsold = response.message.filter(catalog => !catalog.sold).map(c => c.id);
                         const sold = response.message.filter(catalog => catalog.sold).map(c => c.id);
-                        console.log(unsold, sold)
                         this.setState(
                             {
                                 catalogs: response.message,
@@ -141,38 +143,47 @@ class AdminPanel extends Component {
                             }
                         );
                     } else {
-                        notifyError(response.message);
+                        notifyError('' + response.message);
                     }
                 })
                 .catch(err => {
-                    notifyError(err.response);
+                    notifyError('' + err.response);
                 });
         }
     };
     getRegisteredUser = () => {
         dataFetch('/getRegisteredUser', {
-            auction_id: this.state.auction_id
+            auction_id: this.state.auction_id,
+            isAuthRequired: true
         })
             .then(users => {
                 const arrId = users.message.map(user => String(user.user_id));
-                dataFetch('/getUserDetails', {ids: arrId}).then(response => {
-                    if (response.status_code == 200) {
-                        this.setState({
-                            activeUsers: response.message
-                        });
-                    } else {
-                        notifyError('Error Fetching Active User');
-                    }
-                });
+                let queryParams = {};
+                queryParams.isAuthRequired = true;
+                queryParams.ids = arrId;
+                dataFetch('/getUserDetails', queryParams)
+                    .then(response => {
+                        if (response.status_code == 200) {
+                            this.setState({
+                                activeUsers: response.message
+                            });
+                        } else {
+                            notifyError('' + response.message);
+                        }
+                    })
+                    .catch(err => {
+                        notifyError('' + err.message);
+                    });
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
     };
     openAuction() {
         //update auctionConfig
         let data = {...this.state};
         data.is_open = true;
+        data.isAuthRequired = true;
         dataFetch('/updateAuctionConfig', data)
             .then(response => {
                 if (response.status_code == 200) {
@@ -182,14 +193,13 @@ class AdminPanel extends Component {
                         },
                         () => {
                             this.getCatalog(data);
-                            notifySuccess(response.message);
                         }
                     );
                 } else {
                 }
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
 
         socket = io.connect();
@@ -206,9 +216,10 @@ class AdminPanel extends Component {
                         const {currentBid: final_price, bidHolderId: user_id} = this.state.bidDetails;
                         const {autoPlay, unsold} = this.state;
                         let data = {};
-                        data.final_price = final_price;
-                        data.user_id = user_id;
+                        data.final_price = this.state.bidDetails.currentBid;
+                        data.user_id = this.state.bidDetails.bidHolderId;
                         data.item_id = catalog.id;
+                        data.isAuthRequired = true;
                         dataFetch('/saveAuctionSummary', data)
                             .then(response => {
                                 if (response.status_code == 200) {
@@ -217,11 +228,11 @@ class AdminPanel extends Component {
                                         this.markBiddingStart(unsold[0]);
                                     }
                                 } else {
-                                    notifyError(response.message);
+                                    notifyError('' + response.message);
                                 }
                             })
                             .catch(err => {
-                                notifyError(err.response);
+                                notifyError('' + err.response);
                             });
                         if (this.state.sold.length === this.state.catalogs.length) {
                             this.closeAuction();
@@ -246,28 +257,34 @@ class AdminPanel extends Component {
         });
         socket.on('onlineUsers', message => {
             dataFetch('/getRegisteredUser', {
-                auction_id: this.state.auction_id
-            }).then(users => {
-                const arrId = users.message.map(user => String(user.user_id));
-                this.setState({
-                    clientIds: message
-                });
-                const mergeArray = Array.from(new Set([...message, ...arrId]));
-                const idData = {ids: mergeArray};
-                dataFetch('/getUserDetails', idData)
-                    .then(response => {
-                        if (response.status_code == 200) {
-                            this.setState({
-                                activeUsers: response.message
-                            });
-                        } else {
-                            notifyError('Error Fetching Active User');
-                        }
-                    })
-                    .catch(err => {
-                        notifyError(err.response);
+                auction_id: this.state.auction_id,
+                isAuthRequired: true
+            })
+                .then(users => {
+                    const arrId = users.message.map(user => String(user.user_id));
+                    this.setState({
+                        clientIds: message
                     });
-            });
+                    const mergeArray = Array.from(new Set([...message, ...arrId]));
+                    let idData = {ids: mergeArray};
+                    idData['isAuthRequired'] = true;
+                    dataFetch('/getUserDetails', idData)
+                        .then(response => {
+                            if (response.status_code == 200) {
+                                this.setState({
+                                    activeUsers: response.message
+                                });
+                            } else {
+                                notifyError('' + response.message);
+                            }
+                        })
+                        .catch(err => {
+                            notifyError('' + err.response);
+                        });
+                })
+                .catch(err => {
+                    notifyError('' + err.response);
+                });
         });
         socket.on('allBids', bidDetails => {
             this.setState({
@@ -283,6 +300,7 @@ class AdminPanel extends Component {
         //update auctionConfig
         let data = {...this.state};
         data.is_open = false;
+        data.isAuthRequired = true;
         dataFetch('/updateAuctionConfig', data)
             .then(response => {
                 if (response.status_code == 200) {
@@ -293,11 +311,11 @@ class AdminPanel extends Component {
                         clientIds: []
                     });
                 } else {
-                    notifyError(response.message);
+                    notifyError('' + response.message);
                 }
             })
             .catch(err => {
-                notifyError(response.message);
+                notifyError('' + response.message);
             });
 
         //emit close auction
@@ -388,7 +406,7 @@ class AdminPanel extends Component {
                     return true;
                 }
             });
-            if(!nxtItemId) nxtItemId = unsold[0];
+            if (!nxtItemId) nxtItemId = unsold[0];
             this.markBiddingStart(nxtItemId);
         }
     };

@@ -5,6 +5,8 @@ const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
+const authCheck = require(__dirname + './../middleware/authCheck');
+const adminAuthCheck = require(__dirname + './../middleware/adminAuthCheck');
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -24,6 +26,8 @@ app.use(
 
 app.use(bodyParser.json());
 
+app.use('/liveAuctions', authCheck);
+
 app.post('/liveAuctions', function(req, res) {
     models.AuctionConfig.findAll({
         where: {
@@ -34,7 +38,7 @@ app.post('/liveAuctions', function(req, res) {
             Sendresponse(res, 200, responses);
         })
         .catch(err => {
-            Sendresponse(res, 400, 'Not in table :D');
+            Sendresponse(res, 400, err.message);
         });
 });
 

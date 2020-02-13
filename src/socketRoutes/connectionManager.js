@@ -115,7 +115,24 @@ function joinAuction(socket, namespace, user_id) {
         socket.emit('currentCatalog', adminSockets[namespace].currentCatalog);
         // send current bidDetails to this newly added client
         bidManager.showCurrentBid(socket, namespace);
-        socket.emit('joinedSuccessful');
+
+        const handshakeData = socket.request;
+        let u_id = handshakeData._query.userIdForAuth;
+        let user_token = handshakeData._query.user_token;
+
+        models.User.findOne({where: {id: u_id, token: user_token}, raw: true, logging: false})
+            .then(function(user) {
+                if (user) {
+                    socket.emit('joinedSuccessful');
+                } else {
+                    socket.emit('authError');
+                }
+            })
+            .catch(function(err) {
+                console.log('ERROR: ' + err.message);
+                socket.emit('authError');
+            });
+
         if (adminSockets[namespace].paused) {
             socket.emit('pausedBidding');
         }

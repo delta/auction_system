@@ -5,6 +5,8 @@ const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
+const authCheck = require(__dirname + './../middleware/authCheck');
+const adminAuthCheck = require(__dirname + './../middleware/adminAuthCheck');
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -23,6 +25,8 @@ app.use(
 );
 
 app.use(bodyParser.json());
+
+app.use('/saveAuctionSummary', adminAuthCheck);
 
 app.post('/saveAuctionSummary', function(req, res) {
     const {user_id, item_id, final_price} = req.body;

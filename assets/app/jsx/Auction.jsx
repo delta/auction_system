@@ -40,7 +40,7 @@ class Auction extends Component {
     }
     isAuthenticated = () => {
         const {namespace} = this.state;
-        dataFetch('/accessAuction', {url_slug: namespace})
+        dataFetch('/accessAuction', {url_slug: namespace, isAuthRequired: true})
             .then(auction => {
                 if (auction.message.access_type === 'private') {
                     Swal.fire({
@@ -58,6 +58,7 @@ class Auction extends Component {
                             return;
                         }
                         let data = {password: response.value, auction_url: namespace};
+                        data.isAuthRequired = true;
                         dataFetch('/authorizeAuction', data)
                             .then(data => {
                                 if (data.message.verified) {
@@ -84,7 +85,7 @@ class Auction extends Component {
                 }
             })
             .catch(err => {
-                notifyError(err.message);
+                notifyError('' + err.message);
             });
     };
 
@@ -96,6 +97,7 @@ class Auction extends Component {
                 user_id: this.state.user_id,
                 auction_id: parseInt(this.props.match.params.id)
             };
+            data.isAuthRequired = true;
             dataFetch('/userAuctionRegistration', data).then(user => {
                 socket.emit('joinRoom', this.state.namespace, this.state.user_id);
             });
@@ -132,8 +134,11 @@ class Auction extends Component {
                 loading: false
             });
         });
+        socket.on('authError', () => {
+            sessionStorage.clear();
+            window.location.href = '/login';
+        });
         socket.on('currentCatalog', catalog => {
-            console.log(catalog)
             this.setState({
                 catalog,
                 bid_value: catalog.base_price
@@ -184,7 +189,11 @@ class Auction extends Component {
     };
 
     socketConnect() {
-        socket = io.connect();
+        let user = JSON.parse(sessionStorage.getItem('user'));
+        let authParams = {};
+        authParams.userIdForAuth = user.user_id;
+        authParams.user_token = user.token;
+        socket = io.connect({query: authParams});
     }
 
     checkStatus() {
@@ -244,7 +253,7 @@ class Auction extends Component {
         }
         let newBid = this.getBidAmount();
         let bidDiff = newBid - bid_value;
-        return (
+        return !this.state.loading ? (
             <div className={biddingPaused ? 'text-center pause-catalog' : 'text-center'} style={style.formBox}>
                 <div className="pause-dialog">Auction is paused</div>
                 <div className="d-flex justify-content-center">
@@ -259,9 +268,9 @@ class Auction extends Component {
                         <div>
                             {catalog ? (
                                 <div className="mt-5 mb-5">
-                                    <div class="card" style={{width: '300px'}}>
+                                    <div className="card" style={{width: '300px'}}>
                                         <img
-                                            class="card-img-top"
+                                            className="card-img-top"
                                             src={
                                                 catalog.thumbnail_url
                                                     ? catalog.thumbnail_url
@@ -269,7 +278,7 @@ class Auction extends Component {
                                             }
                                             alt="Card image"
                                         />
-                                        <div class="card-body">
+                                        <div className="card-body">
                                             <h5>Catalog Details</h5>
                                             <div className="row font-weight-bold">
                                                 <div className="col-md-6 text-capitalize">Name</div>
@@ -304,6 +313,8 @@ class Auction extends Component {
                     )}
                 </div>
             </div>
+        ) : (
+            <div className="align-content-center">Loading</div>
         );
     }
 }

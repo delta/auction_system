@@ -31,7 +31,7 @@ class Home extends Component {
         if (user == null || user.role != 'User') {
             window.location.href = '/login';
         } else {
-            dataFetch('/liveAuctions', {})
+            dataFetch('/liveAuctions', {isAuthRequired: true})
                 .then(response => {
                     if (response.status_code == 200 && response.message != null && response.message != []) {
                         this.setState({
@@ -40,7 +40,7 @@ class Home extends Component {
                     }
                 })
                 .catch(err => {
-                    notifyError(err.response);
+                    notifyError('' + err.response);
                 });
         }
     }
