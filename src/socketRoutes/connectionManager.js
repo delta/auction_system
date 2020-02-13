@@ -6,12 +6,15 @@ let adminSockets = {}; // {"admin1": {socket, id}, "admin2": {socket, id}};
 let clientSockets = {}; // {"room1": {"u1": socket, "u2": socket}, "room2": {"u3": socket}}
 
 //Auction owner creating a room
-function ownerSocket(socket, namespace, owner_id, max_user) {
+function ownerSocket(socket, config) {
+    const namespace = config.url_slug;
     //update adminSockets
     adminSockets[namespace] = {
         socket: socket,
-        id: owner_id,
-        max_user,
+        id: config.owner_id,
+        max_user: config.max_user,
+        is_open: config.is_open,
+        can_register: config.can_register,
         paused: false
     };
     //add a entry in clientSockets for owner's room
@@ -40,6 +43,7 @@ function skipBidding(io, socket, namespace, user_id, catalogName) {
 
     socket.broadcast.to(namespace).emit('catalogSkip', catalogName);
     socket.emit('skipBiddingSuccess');
+    resumeBidding(io, socket, namespace);
     bidManager.resetBid(io, namespace, '-', -1, 0);
 }
 
@@ -54,20 +58,25 @@ function stopBidding(io, socket, namespace, user_id, catalog) {
     socket.broadcast.to(namespace).emit('catalogSold', catalog.name, bidDetails);
     socket.emit('stopBiddingSuccess', catalog, bidDetails);
     socket.broadcast.to(namespace).emit('currentCatalogSold', adminSockets[namespace].currentCatalog);
+    resumeBidding(io, socket, namespace);
     bidManager.resetBid(io, namespace, '-', -1, 0);
     return;
 }
 
-function pauseBidding(io, socket, namespace, owner_id, catalog) {
+function pauseBidding(io, socket, namespace) {
     adminSockets[namespace].paused = true;
     let bidDetails = bidManager.showAllBid(namespace);
     socket.emit('allBids', bidDetails);
     socket.broadcast.to(namespace).emit('pausedBidding');
 }
 
-function resumeBidding(io, socket, namespace, owner_id, catalog) {
+function resumeBidding(io, socket, namespace) {
     adminSockets[namespace].paused = false;
     socket.broadcast.to(namespace).emit('resumeBidding');
+}
+
+function changeRegistrationStatus(io, socket, namespace) {
+    adminSockets[namespace].can_register = !adminSockets[namespace].can_register;
 }
 
 //Closing a auction
@@ -97,10 +106,11 @@ function closeAuction(socket, io, namespace, owner_id) {
 
 //Handling new client connection for a specific auction
 function joinAuction(socket, namespace, user_id) {
-    //check is auction open
     if (clientSockets[namespace] === undefined) {
         //no room found (auction is closed or does not exist)
-        socket.emit('auctionClosed', 'Auction is either closed or not open yet!');
+        socket.emit('auctionClosed', 'Auction is either closed!');
+    } else if (!adminSockets[namespace].can_register) {
+        socket.emit('registrationsClosed');
     } else if (Object.keys(clientSockets[namespace]).length + 1 > adminSockets[namespace].max_user) {
         socket.emit('max_limit_exceeded');
     } else {
@@ -123,7 +133,7 @@ function joinAuction(socket, namespace, user_id) {
         models.User.findOne({where: {id: u_id, token: user_token}, raw: true, logging: false})
             .then(function(user) {
                 if (user) {
-                    socket.emit('joinedSuccessful');
+                    socket.emit('joinedSuccessful', adminSockets[namespace].paused);
                 } else {
                     socket.emit('authError');
                 }
@@ -133,9 +143,6 @@ function joinAuction(socket, namespace, user_id) {
                 socket.emit('authError');
             });
 
-        if (adminSockets[namespace].paused) {
-            socket.emit('pausedBidding');
-        }
         //inform owner with updated list of active clientIds
         adminSockets[namespace].socket.emit('onlineUsers', Object.keys(clientSockets[namespace]));
     }
@@ -159,5 +166,6 @@ module.exports = {
     leaveAuction,
     pauseBidding,
     resumeBidding,
-    skipBidding
+    skipBidding,
+    changeRegistrationStatus
 };

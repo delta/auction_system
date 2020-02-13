@@ -204,7 +204,14 @@ class AdminPanel extends Component {
 
         socket = io.connect();
         socket.on('connect', () => {
-            socket.emit('openAuction', this.state.url_slug, this.state.owner_id, this.state.max_users);
+            let configData = {};
+            configData.max_users = this.state.max_users;
+            configData.url_slug = this.state.url_slug;
+            configData.owner_id = this.state.owner_id;
+            configData.can_register = this.state.can_register;
+            configData.is_open = this.state.is_open;
+
+            socket.emit('openAuction', configData);
             const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
             const data = {owner_id, namespace};
             socket.on('stopBiddingSuccess', (catalog, bidDetails) => {
@@ -223,10 +230,7 @@ class AdminPanel extends Component {
                         dataFetch('/saveAuctionSummary', data)
                             .then(response => {
                                 if (response.status_code == 200) {
-                                    notifySuccess(response.message);
-                                    if (autoPlay && unsold.length > 0) {
-                                        this.markBiddingStart(unsold[0]);
-                                    }
+                                    notifySuccess("Sold successfully");
                                 } else {
                                     notifyError('' + response.message);
                                 }
@@ -241,8 +245,8 @@ class AdminPanel extends Component {
                 );
             });
             socket.on('skipBiddingSuccess', catalogName => {
-                const {autoPlay, currentIndex, unsold} = this.state;
                 notifySuccess('Catalog Skipped');
+                const {autoPlay, currentIndex, unsold} = this.state;
                 if (currentIndex < 0 || currentIndex > unsold.length) {
                     return;
                 }
@@ -398,6 +402,7 @@ class AdminPanel extends Component {
             () => {}
         );
         socket.emit('biddingStop', owner_id, namespace, catalog);
+
         if (autoPlay) {
             let nxtItemId;
             unsold.some(i => {
@@ -477,6 +482,31 @@ class AdminPanel extends Component {
         this.setState({
             autoPlay: !this.state.autoPlay
         });
+    };
+
+    toggleRegistrationStatus = () => {
+        //update auctionConfig
+        let data = {...this.state};
+        data.can_register = !this.state.can_register;
+        data.isAuthRequired = true;
+        dataFetch('/updateAuctionConfig', data)
+            .then(response => {
+                if (response.status_code == 200) {
+                    this.setState({
+                        can_register: !this.state.can_register
+                    });
+
+                    notifySuccess(response.message);
+
+                    //emit close auction
+                    socket.emit('changeRegistrationStatus', this.state.url_slug);
+                } else {
+                    notifyError('' + response.message);
+                }
+            })
+            .catch(err => {
+                notifyError('' + response.message);
+            });
     };
 
     render() {
@@ -614,7 +644,13 @@ class AdminPanel extends Component {
                                 </div>
                                 <div className="modal-body">
                                     {manageCatalog && (
-                                        <ManageCatalog owner_id={this.state.owner_id} catalogId={this.state.start} updateCatalog={(data) => {this.getCatalog(data)}} />
+                                        <ManageCatalog
+                                            owner_id={this.state.owner_id}
+                                            catalogId={this.state.start}
+                                            updateCatalog={data => {
+                                                this.getCatalog(data);
+                                            }}
+                                        />
                                     )}
                                 </div>
                             </div>
@@ -627,6 +663,15 @@ class AdminPanel extends Component {
                         <div>
                             <input type="checkbox" data-toggle="toggle" onChange={this.toggleAutoPlay} />
                             AutoPlay
+                        </div>
+                        <div>
+                            <input
+                                type="checkbox"
+                                data-toggle="toggle"
+                                onChange={this.toggleRegistrationStatus}
+                                checked={this.state.can_register}
+                            />
+                            Registration Status
                         </div>
                     </div>
                     <div className="row">

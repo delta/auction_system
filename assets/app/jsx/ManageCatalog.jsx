@@ -15,6 +15,7 @@ class ManageCatalog extends Component {
                 if (response.status_code == 200) {
                     notifySuccess('Successfully Deleted');
                     this.getCatalog();
+                    this.props.updateCatalog({owner_id: this.props.owner_id});
                 } else {
                     notifyError('' + response.message);
                 }

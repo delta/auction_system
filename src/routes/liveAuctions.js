@@ -31,7 +31,8 @@ app.use('/liveAuctions', authCheck);
 app.post('/liveAuctions', function(req, res) {
     models.AuctionConfig.findAll({
         where: {
-            is_open: true
+            is_open: true,
+            can_register: true
         }
     })
         .then(responses => {

@@ -115,10 +115,23 @@ class Auction extends Component {
             });
             this.props.history.push('/home');
         });
+        socket.on('registrationsClosed', () => {
+            Swal.fire({
+                icon: 'error',
+                title: "Registrations Closed, Can't Join",
+                showClass: {
+                    popup: 'animated fadeInDown faster'
+                },
+                hideClass: {
+                    popup: 'animated fadeOutUp faster'
+                }
+            });
+            this.props.history.push('/home');
+        });
         socket.on('currentBidStatus', message => {
             this.setState({
                 is_open: true,
-                bid_value: message.currentBid,
+                bid_value: message.currentBid == 0 ? this.state.bid_value : message.currentBid,
                 currentBidHolder: message.bidHolderId,
                 bidHolderName: message.bidHolderName
             });
@@ -129,9 +142,10 @@ class Auction extends Component {
             });
             socket.close();
         });
-        socket.on('joinedSuccessful', () => {
+        socket.on('joinedSuccessful', biddingPaused => {
             this.setState({
-                loading: false
+                loading: false,
+                biddingPaused: biddingPaused
             });
         });
         socket.on('authError', () => {
@@ -144,23 +158,15 @@ class Auction extends Component {
                 bid_value: catalog.base_price
             });
         });
-        socket.on('startAuction', catalog => {
-            this.setState({
-                catalog: '',
-                biddingPaused: false
-            });
-        });
         socket.on('currentCatalogSold', catalog => {
             this.setState({
-                catalog,
-                biddingPaused: false
+                catalog
             });
         });
         socket.on('pausedBidding', () => {
             this.setState({
                 biddingPaused: true
             });
-            autoPlay && this.markBiddingStart(unsold[0]);
         });
         socket.on('resumeBidding', () => {
             this.setState({
@@ -175,8 +181,7 @@ class Auction extends Component {
                 timer: 3000
             });
             this.setState({
-                catalog: '',
-                biddingPaused: false
+                catalog: ''
             });
         });
         socket.on('catalogSold', (catalogName, bidDetails) => {

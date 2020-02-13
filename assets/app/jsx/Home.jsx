@@ -60,7 +60,9 @@ class Home extends Component {
                         this.state.liveAuctions.map(auction => {
                             return (
                                 <div>
-                                    <span  style={{cursor:'pointer'}} onClick={() => this.joinAuction(auction)}>{auction.auction_url}</span>
+                                    <span style={{cursor: 'pointer'}} onClick={() => this.joinAuction(auction)}>
+                                        {auction.auction_url}
+                                    </span>
                                     <br />
                                 </div>
                             );
