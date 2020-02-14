@@ -379,7 +379,7 @@ class AdminPanel extends Component {
                 pauseCatalog: ''
             },
             () => {}
-        );
+        );q_type
         socket.emit('biddingStop', owner_id, namespace, catalog.name);
     };
     markBiddingStart = id => {
@@ -586,7 +586,7 @@ class AdminPanel extends Component {
                                 </div>
                                 <div class="modal-body">
                                     {manageCatalog && (
-                                        <ManageCatalog owner_id={this.state.owner_id} catalogId={this.state.start} />
+                                        <ManageCatalog owner_id={this.state.owner_id} catalogId={this.state.start} updateCatalog={(data) => {this.getCatalog(data)}} />
                                     )}
                                 </div>
                             </div>
