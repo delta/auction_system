@@ -66,6 +66,7 @@ class ManageCatalog extends Component {
                         },
                         () => {
                             this.getCatalog();
+                            this.props.updateCatalog({owner_id: this.props.owner_id});
                         }
                     );
                 })
@@ -82,6 +83,7 @@ class ManageCatalog extends Component {
                         },
                         () => {
                             this.getCatalog();
+                            this.props.updateCatalog({owner_id: this.props.owner_id});
                         }
                     );
                 })
