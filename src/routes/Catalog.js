@@ -5,6 +5,8 @@ const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
+const authCheck = require(__dirname + './../middleware/authCheck');
+const adminAuthCheck = require(__dirname + './../middleware/adminAuthCheck');
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -24,6 +26,11 @@ app.use(
 
 app.use(bodyParser.json());
 
+app.use('/getCatalog', adminAuthCheck);
+app.use('/createCatalog', adminAuthCheck);
+app.use('/deleteCatalog', adminAuthCheck);
+app.use('/createCatalog', adminAuthCheck);
+
 app.post('/getCatalog', function(req, res) {
     const {owner_id} = req.body;
     models.Catalog.findAll({
@@ -39,8 +46,15 @@ app.post('/getCatalog', function(req, res) {
                 }
             }).then(items => {
                 let itemIds = items.map(items => items.item_id);
+                catalogs = JSON.parse(JSON.stringify(catalogs));
+                let finalCatalogues = catalogs.map(c => {
+                    if (itemIds.includes(c.id)) {
+                        c.sold = true;
+                    } else c.sold = false;
+                    return c;
+                });
                 let itemAvailable = catalogs.filter(x => !itemIds.includes(x.id));
-                Sendresponse(res, 200, itemAvailable);
+                Sendresponse(res, 200, finalCatalogues);
             });
         })
         .catch(err => {
@@ -78,7 +92,7 @@ app.post('/deleteCatalog', function(req, res) {
             Sendresponse(res, 200, 'Deleted Successfully');
         })
         .catch(err => {
-            Sendresponse(res, 400, 'Error in deleting');
+            Sendresponse(res, 400, 'Error in deleting ' + err.message);
         });
 });
 

@@ -8,13 +8,20 @@ class ManageCatalog extends Component {
         updateType: ''
     };
     deleteCatalog = id => {
-        dataFetch('/deleteCatalog', {id})
-            .then(data => {
-                notifySuccess('Successfully Deleted');
-                this.getCatalog();
+        let data = {id: id};
+        data.isAuthRequired = true;
+        dataFetch('/deleteCatalog', data)
+            .then(response => {
+                if (response.status_code == 200) {
+                    notifySuccess('Successfully Deleted');
+                    this.getCatalog();
+                    this.props.updateCatalog({owner_id: this.props.owner_id});
+                } else {
+                    notifyError('' + response.message);
+                }
             })
             .catch(err => {
-                notifyError('Error in deleting! Try again');
+                notifyError('' + err.message);
             });
     };
     componentDidMount() {
@@ -24,27 +31,22 @@ class ManageCatalog extends Component {
         const data = {
             owner_id: this.props.owner_id
         };
+        data.isAuthRequired = true;
         dataFetch('/getCatalog', data)
             .then(response => {
                 if (response.status_code == 200) {
-                    this.setState(
-                        {
-                            catalogs: response.message
-                        },
-                        () => {
-                            console.log('catalogs ', this.state.catalogs);
-                        }
-                    );
+                    this.setState({
+                        catalogs: response.message
+                    });
                 } else {
-                    notifyError(response.message);
+                    notifyError('' + response.message);
                 }
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
     };
     submitUpdateCatalog = values => {
-        console.log('submit Update Catalog');
         const {updateType, selectedCatalog} = this.state;
         const data = {
             owner_id: this.props.owner_id,
@@ -55,23 +57,28 @@ class ManageCatalog extends Component {
             description: values.description || '',
             thumbnail_url: values.thumbnail_url || ''
         };
+        data.isAuthRequired = true;
         if (updateType === 'update') {
             data.id = selectedCatalog.id;
             dataFetch('/updateCatalog', data)
-                .then(data => {
-                    notifySuccess('Successfully Updated');
-                    this.setState(
-                        {
-                            updateType: ''
-                        },
-                        () => {
-                            this.getCatalog();
-                            this.props.updateCatalog({owner_id: this.props.owner_id});
-                        }
-                    );
+                .then(response => {
+                    if (response.status_code == 200) {
+                        notifySuccess('Successfully Updated');
+                        this.setState(
+                            {
+                                updateType: ''
+                            },
+                            () => {
+                                this.getCatalog();
+                                this.props.updateCatalog({owner_id: this.props.owner_id});
+                            }
+                        );
+                    } else {
+                        notifyError(response.message);
+                    }
                 })
                 .catch(err => {
-                    notifyError('Error in updating!Try again');
+                    notifyError('' + err.message);
                 });
         } else {
             dataFetch('/createCatalog', data)
@@ -88,7 +95,7 @@ class ManageCatalog extends Component {
                     );
                 })
                 .catch(err => {
-                    notifyError('Error in Adding!Try again');
+                    notifyError('' + err.message);
                 });
         }
     };
@@ -182,7 +189,6 @@ class ManageCatalog extends Component {
                                         if (!values.base_price) {
                                             errors.base_price = 'Required';
                                         }
-                                        console.log('errors ', errors);
                                         return errors;
                                     }}
                                     render={({handleSubmit, form, submitting, values}) => (

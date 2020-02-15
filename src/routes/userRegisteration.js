@@ -1,11 +1,14 @@
 const express = require('express');
 const app = express();
+const router = express.Router();
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
 const md5 = require('md5');
+const authCheck = require(__dirname + './../middleware/authCheck');
+const adminAuthCheck = require(__dirname + './../middleware/adminAuthCheck');
 
 //Sample file for all routes
 
@@ -25,9 +28,11 @@ app.use(
     })
 );
 
-app.use(bodyParser.json());
+router.use(bodyParser.json());
 
-app.post('/userRegisteration', function(req, res) {
+router.use('/getUserDetails', adminAuthCheck);
+
+router.post('/userRegisteration', function(req, res) {
     const {username: name, password, email, contact, country} = req.body;
     models.User.build({
         name,
@@ -43,10 +48,11 @@ app.post('/userRegisteration', function(req, res) {
             Sendresponse(res, 200, 'User Registered Successfully');
         })
         .catch(err => {
-            Sendresponse(res, 400, 'Error registering user ', err);
+            Sendresponse(res, 400, 'Error registering user - ' + err.message);
         });
 });
-app.post('/getUserDetails', (req, res) => {
+
+router.post('/getUserDetails', (req, res) => {
     models.User.findAll({
         where: {
             id: req.body.ids
@@ -61,4 +67,4 @@ app.post('/getUserDetails', (req, res) => {
         });
 });
 
-module.exports = app;
+module.exports = router;

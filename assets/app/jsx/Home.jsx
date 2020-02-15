@@ -31,7 +31,7 @@ class Home extends Component {
         if (user == null || user.role != 'User') {
             window.location.href = '/login';
         } else {
-            dataFetch('/liveAuctions', {})
+            dataFetch('/liveAuctions', {isAuthRequired: true})
                 .then(response => {
                     if (response.status_code == 200 && response.message != null && response.message != []) {
                         this.setState({
@@ -40,7 +40,7 @@ class Home extends Component {
                     }
                 })
                 .catch(err => {
-                    notifyError(err.response);
+                    notifyError('' + err.response);
                 });
         }
     }
@@ -60,7 +60,9 @@ class Home extends Component {
                         this.state.liveAuctions.map(auction => {
                             return (
                                 <div>
-                                    <span  style={{cursor:'pointer'}} onClick={() => this.joinAuction(auction)}>{auction.auction_url}</span>
+                                    <span style={{cursor: 'pointer'}} onClick={() => this.joinAuction(auction)}>
+                                        {auction.auction_url}
+                                    </span>
                                     <br />
                                 </div>
                             );

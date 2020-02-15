@@ -23,7 +23,8 @@ module.exports = {
             },
             auction_url: {
                 allowNull: false,
-                type: Sequelize.STRING
+                type: Sequelize.STRING,
+                unique: true
             },
             max_users: {
                 allowNull: false,

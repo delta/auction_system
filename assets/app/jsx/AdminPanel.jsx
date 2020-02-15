@@ -63,6 +63,7 @@ class AdminPanel extends Component {
             let data = {};
             data.user_id = user.user_id;
             data.q_type = 'get_config';
+            data.isAuthRequired = true;
             //prefetch config details, if it's in db
             dataFetch('/getAuctionConfig', data)
                 .then(response => {
@@ -95,7 +96,7 @@ class AdminPanel extends Component {
                     }
                 })
                 .catch(err => {
-                    notifyError(err.response);
+                    notifyError('' + err.response);
                 });
         }
     }
@@ -105,6 +106,7 @@ class AdminPanel extends Component {
         let data = {...values};
         data.q_type = this.state.q_type;
         data.user_id = this.state.owner_id;
+        data.isAuthRequired = true;
         dataFetch('/addAuctionConfig', data)
             .then(response => {
                 this.setState({
@@ -119,61 +121,69 @@ class AdminPanel extends Component {
                 });
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
     };
     getCatalog = data => {
         if (this.state.is_open) {
-            console.log('idnc');
+            data.isAuthRequired = true;
             dataFetch('/getCatalog', data)
                 .then(response => {
-                    console.log(response);
                     if (response.status_code == 200) {
-                        console.log('dkjbad');
-                        const unsold = response.message.map(catalog => catalog.id);
-                        console.log(unsold);
+                        const unsold = response.message.filter(catalog => !catalog.sold).map(c => c.id);
+                        const sold = response.message.filter(catalog => catalog.sold).map(c => c.id);
                         this.setState(
                             {
                                 catalogs: response.message,
-                                unsold: unsold
+                                unsold: unsold,
+                                sold: sold
                             },
                             () => {
                                 this.getRegisteredUser();
                             }
                         );
                     } else {
-                        notifyError(response.message);
+                        notifyError('' + response.message);
                     }
                 })
                 .catch(err => {
-                    notifyError(err.response);
+                    notifyError('' + err.response);
                 });
         }
     };
     getRegisteredUser = () => {
         dataFetch('/getRegisteredUser', {
-            auction_id: this.state.auction_id
+            auction_id: this.state.auction_id,
+            isAuthRequired: true
         })
             .then(users => {
                 const arrId = users.message.map(user => String(user.user_id));
-                dataFetch('/getUserDetails', {ids: arrId}).then(response => {
-                    if (response.status_code == 200) {
-                        this.setState({
-                            activeUsers: response.message
-                        });
-                    } else {
-                        notifyError('Error Fetching Active User');
-                    }
-                });
+                let queryParams = {};
+                queryParams.isAuthRequired = true;
+                queryParams.ids = arrId;
+                dataFetch('/getUserDetails', queryParams)
+                    .then(response => {
+                        if (response.status_code == 200) {
+                            this.setState({
+                                activeUsers: response.message
+                            });
+                        } else {
+                            notifyError('' + response.message);
+                        }
+                    })
+                    .catch(err => {
+                        notifyError('' + err.message);
+                    });
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
     };
     openAuction() {
         //update auctionConfig
         let data = {...this.state};
         data.is_open = true;
+        data.isAuthRequired = true;
         dataFetch('/updateAuctionConfig', data)
             .then(response => {
                 if (response.status_code == 200) {
@@ -183,22 +193,28 @@ class AdminPanel extends Component {
                         },
                         () => {
                             this.getCatalog(data);
-                            notifySuccess(response.message);
                         }
                     );
                 } else {
                 }
             })
             .catch(err => {
-                notifyError(err.response);
+                notifyError('' + err.response);
             });
 
         socket = io.connect();
         socket.on('connect', () => {
-            socket.emit('openAuction', this.state.url_slug, this.state.owner_id, this.state.max_users);
+            let configData = {};
+            configData.max_users = this.state.max_users;
+            configData.url_slug = this.state.url_slug;
+            configData.owner_id = this.state.owner_id;
+            configData.can_register = this.state.can_register;
+            configData.is_open = this.state.is_open;
+
+            socket.emit('openAuction', configData);
             const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
             const data = {owner_id, namespace};
-            socket.on('stopBiddingSuccess', bidDetails => {
+            socket.on('stopBiddingSuccess', (catalog, bidDetails) => {
                 this.setState(
                     {
                         bidDetails
@@ -206,32 +222,31 @@ class AdminPanel extends Component {
                     () => {
                         const {currentBid: final_price, bidHolderId: user_id} = this.state.bidDetails;
                         const {autoPlay, unsold} = this.state;
-                        data.final_price = final_price;
-                        data.user_id = user_id;
-                        data.item_id = sold[sold.length - 1];
+                        let data = {};
+                        data.final_price = this.state.bidDetails.currentBid;
+                        data.user_id = this.state.bidDetails.bidHolderId;
+                        data.item_id = catalog.id;
+                        data.isAuthRequired = true;
                         dataFetch('/saveAuctionSummary', data)
                             .then(response => {
                                 if (response.status_code == 200) {
-                                    notifySuccess(response.message);
-                                    if (autoPlay && unsold.length > 0) {
-                                        this.markBiddingStart(unsold[0]);
-                                    }
+                                    notifySuccess("Sold successfully");
                                 } else {
-                                    notifyError(response.message);
+                                    notifyError('' + response.message);
                                 }
                             })
                             .catch(err => {
-                                notifyError(err.response);
+                                notifyError('' + err.response);
                             });
-                        if (sold.length === catalogs.length) {
+                        if (this.state.sold.length === this.state.catalogs.length) {
                             this.closeAuction();
                         }
                     }
                 );
             });
             socket.on('skipBiddingSuccess', catalogName => {
-                const {autoPlay, currentIndex, unsold} = this.state;
                 notifySuccess('Catalog Skipped');
+                const {autoPlay, currentIndex, unsold} = this.state;
                 if (currentIndex < 0 || currentIndex > unsold.length) {
                     return;
                 }
@@ -246,28 +261,34 @@ class AdminPanel extends Component {
         });
         socket.on('onlineUsers', message => {
             dataFetch('/getRegisteredUser', {
-                auction_id: this.state.auction_id
-            }).then(users => {
-                const arrId = users.message.map(user => String(user.user_id));
-                this.setState({
-                    clientIds: message
-                });
-                const mergeArray = Array.from(new Set([...message, ...arrId]));
-                const idData = {ids: mergeArray};
-                dataFetch('/getUserDetails', idData)
-                    .then(response => {
-                        if (response.status_code == 200) {
-                            this.setState({
-                                activeUsers: response.message
-                            });
-                        } else {
-                            notifyError('Error Fetching Active User');
-                        }
-                    })
-                    .catch(err => {
-                        notifyError(err.response);
+                auction_id: this.state.auction_id,
+                isAuthRequired: true
+            })
+                .then(users => {
+                    const arrId = users.message.map(user => String(user.user_id));
+                    this.setState({
+                        clientIds: message
                     });
-            });
+                    const mergeArray = Array.from(new Set([...message, ...arrId]));
+                    let idData = {ids: mergeArray};
+                    idData['isAuthRequired'] = true;
+                    dataFetch('/getUserDetails', idData)
+                        .then(response => {
+                            if (response.status_code == 200) {
+                                this.setState({
+                                    activeUsers: response.message
+                                });
+                            } else {
+                                notifyError('' + response.message);
+                            }
+                        })
+                        .catch(err => {
+                            notifyError('' + err.response);
+                        });
+                })
+                .catch(err => {
+                    notifyError('' + err.response);
+                });
         });
         socket.on('allBids', bidDetails => {
             this.setState({
@@ -283,6 +304,7 @@ class AdminPanel extends Component {
         //update auctionConfig
         let data = {...this.state};
         data.is_open = false;
+        data.isAuthRequired = true;
         dataFetch('/updateAuctionConfig', data)
             .then(response => {
                 if (response.status_code == 200) {
@@ -293,11 +315,11 @@ class AdminPanel extends Component {
                         clientIds: []
                     });
                 } else {
-                    notifyError(response.message);
+                    notifyError('' + response.message);
                 }
             })
             .catch(err => {
-                notifyError(response.message);
+                notifyError('' + response.message);
             });
 
         //emit close auction
@@ -370,7 +392,6 @@ class AdminPanel extends Component {
         }
         sold.push(id);
         unsold.splice(unsold.indexOf(id), 1);
-        console.log('unsold ', unsold);
         this.setState(
             {
                 sold,
@@ -379,8 +400,20 @@ class AdminPanel extends Component {
                 pauseCatalog: ''
             },
             () => {}
-        );q_type
-        socket.emit('biddingStop', owner_id, namespace, catalog.name);
+        );
+        socket.emit('biddingStop', owner_id, namespace, catalog);
+
+        if (autoPlay) {
+            let nxtItemId;
+            unsold.some(i => {
+                if (parseInt(i) > parseInt(id)) {
+                    nxtItemId = i;
+                    return true;
+                }
+            });
+            if (!nxtItemId) nxtItemId = unsold[0];
+            this.markBiddingStart(nxtItemId);
+        }
     };
     markBiddingStart = id => {
         this.setState(
@@ -449,6 +482,31 @@ class AdminPanel extends Component {
         this.setState({
             autoPlay: !this.state.autoPlay
         });
+    };
+
+    toggleRegistrationStatus = () => {
+        //update auctionConfig
+        let data = {...this.state};
+        data.can_register = !this.state.can_register;
+        data.isAuthRequired = true;
+        dataFetch('/updateAuctionConfig', data)
+            .then(response => {
+                if (response.status_code == 200) {
+                    this.setState({
+                        can_register: !this.state.can_register
+                    });
+
+                    notifySuccess(response.message);
+
+                    //emit close auction
+                    socket.emit('changeRegistrationStatus', this.state.url_slug);
+                } else {
+                    notifyError('' + response.message);
+                }
+            })
+            .catch(err => {
+                notifyError('' + response.message);
+            });
     };
 
     render() {
@@ -568,15 +626,15 @@ class AdminPanel extends Component {
                         draggable={false}
                         rtl={false}
                     />
-                    <div class="modal fade" id="myModal" role="dialog">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header d-flex justify-content-between">
+                    <div className="modal fade" id="myModal" role="dialog">
+                        <div className="modal-dialog modal-lg">
+                            <div className="modal-content">
+                                <div className="modal-header d-flex justify-content-between">
                                     <div>Manage Catalog</div>
                                     <div onClick={this.manageCatalog}>
                                         <button
                                             type="button"
-                                            class="close"
+                                            className="close"
                                             data-toggle="modal"
                                             data-target="#myModal"
                                             aria-label="Close">
@@ -584,9 +642,15 @@ class AdminPanel extends Component {
                                         </button>
                                     </div>
                                 </div>
-                                <div class="modal-body">
+                                <div className="modal-body">
                                     {manageCatalog && (
-                                        <ManageCatalog owner_id={this.state.owner_id} catalogId={this.state.start} updateCatalog={(data) => {this.getCatalog(data)}} />
+                                        <ManageCatalog
+                                            owner_id={this.state.owner_id}
+                                            catalogId={this.state.start}
+                                            updateCatalog={data => {
+                                                this.getCatalog(data);
+                                            }}
+                                        />
                                     )}
                                 </div>
                             </div>
@@ -599,6 +663,15 @@ class AdminPanel extends Component {
                         <div>
                             <input type="checkbox" data-toggle="toggle" onChange={this.toggleAutoPlay} />
                             AutoPlay
+                        </div>
+                        <div>
+                            <input
+                                type="checkbox"
+                                data-toggle="toggle"
+                                onChange={this.toggleRegistrationStatus}
+                                checked={this.state.can_register}
+                            />
+                            Registration Status
                         </div>
                     </div>
                     <div className="row">
@@ -634,7 +707,7 @@ class AdminPanel extends Component {
                                 {!manageCatalog ? 'Manage Catalog' : 'Back'}
                             </button> */}
                             <button
-                                class="btn btn-warning"
+                                className="btn btn-warning"
                                 data-toggle="modal"
                                 data-target="#myModal"
                                 onClick={this.manageCatalog}>

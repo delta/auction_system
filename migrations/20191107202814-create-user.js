@@ -10,7 +10,8 @@ module.exports = {
             },
             name: {
                 allowNull: false,
-                type: Sequelize.STRING
+                type: Sequelize.STRING,
+                unique: true
             },
             password: {
                 allowNull: false,
@@ -30,7 +31,8 @@ module.exports = {
             },
             email: {
                 type: Sequelize.STRING,
-                allowNull: false
+                allowNull: false,
+                unique: true
             },
             country: {
                 type: Sequelize.STRING,
@@ -38,7 +40,8 @@ module.exports = {
             },
             contact: {
                 type: Sequelize.STRING,
-                allowNull: false
+                allowNull: false,
+                unique: true
             },
             createdAt: {
                 allowNull: false,

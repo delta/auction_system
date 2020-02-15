@@ -72,12 +72,15 @@ io.sockets.on('connection', socket => {
         handleConnections.leaveAuction(socket, socket.user_id, socket.namespace);
     });
     socket.on('pauseBidding', (owner_id, namespace, catalog) => {
-        handleConnections.pauseBidding(io, socket, namespace, owner_id, catalog);
+        handleConnections.pauseBidding(io, socket, namespace);
     });
     socket.on('resumeBidding', (owner_id, namespace, catalog) => {
-        handleConnections.resumeBidding(io, socket, namespace, owner_id, catalog);
+        handleConnections.resumeBidding(io, socket, namespace);
     });
     socket.on('deleteBids', (allBids, owner_id, namespace, catalog) => {
         handleBiding.deleteBids(io, socket, allBids, namespace, owner_id, catalog);
+    });
+    socket.on('changeRegistrationStatus', namespace => {
+        handleConnections.changeRegistrationStatus(io, socket, namespace);
     });
 });

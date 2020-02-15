@@ -6,6 +6,8 @@ const cookieSession = require('cookie-session');
 const Sendresponse = require('../sendresponse');
 const models = require(__dirname + '/../../models/');
 const md5 = require('md5');
+const authCheck = require(__dirname + './../middleware/authCheck');
+const adminAuthCheck = require(__dirname + './../middleware/adminAuthCheck');
 
 // trust first proxy3
 app.set('trust proxy', 1);
@@ -24,6 +26,14 @@ app.use(
 );
 
 app.use(bodyParser.json());
+
+app.use('/addAuctionConfig', adminAuthCheck);
+app.use('/updateAuctionConfig', adminAuthCheck);
+app.use('/authorizeAuction', authCheck);
+app.use('/getAuctionConfig', adminAuthCheck);
+app.use('/getRegisteredUser', adminAuthCheck);
+app.use('/accessAuction', authCheck);
+app.use('/userAuctionRegistration', authCheck);
 
 app.post('/getAuctionConfig', function(req, res) {
     const {user_id} = req.body;
@@ -160,7 +170,7 @@ app.post('/getRegisteredUser', (req, res) => {
             Sendresponse(res, 200, users);
         })
         .catch(err => {
-            Sendresponse(res, 400, 'Error fetching User');
+            Sendresponse(res, 400, 'Error fetching User - ' + err.message);
         });
 });
 
