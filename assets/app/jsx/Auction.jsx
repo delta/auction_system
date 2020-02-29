@@ -98,8 +98,12 @@ class Auction extends Component {
                 auction_id: parseInt(this.props.match.params.id)
             };
             data.isAuthRequired = true;
-            dataFetch('/userAuctionRegistration', data).then(user => {
-                socket.emit('joinRoom', this.state.namespace, this.state.user_id);
+            dataFetch('/userAuctionRegistration', data).then(response => {
+                if (response.status_code == '200') {
+                    socket.emit('joinRoom', this.state.namespace, this.state.user_id);
+                } else {
+                    notifyError(response.message);
+                }
             });
         });
         socket.on('max_limit_exceeded', () => {

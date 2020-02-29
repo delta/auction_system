@@ -109,16 +109,20 @@ class AdminPanel extends Component {
         data.isAuthRequired = true;
         dataFetch('/addAuctionConfig', data)
             .then(response => {
-                this.setState({
-                    q_type: 'update_config',
-                    can_register: values.can_register == 1 ? true : false,
-                    is_open: values.is_open == 1 ? true : false,
-                    url_slug: values.url_slug,
-                    max_users: values.max_users,
-                    auction_id: response.message.id,
-                    access_type: values.access_type ? values.access_type : access_type,
-                    password: values.access_type === 'private' ? values.password : password
-                });
+                if (response.status_code == '200') {
+                    this.setState({
+                        q_type: 'update_config',
+                        can_register: values.can_register == 1 ? true : false,
+                        is_open: values.is_open == 1 ? true : false,
+                        url_slug: values.url_slug,
+                        max_users: values.max_users,
+                        auction_id: response.message.id,
+                        access_type: values.access_type ? values.access_type : access_type,
+                        password: values.access_type === 'private' ? values.password : password
+                    });
+                } else {
+                    notifyError(response.message);
+                }
             })
             .catch(err => {
                 notifyError('' + err.response);
@@ -196,6 +200,7 @@ class AdminPanel extends Component {
                         }
                     );
                 } else {
+                    notifyError(response.message);
                 }
             })
             .catch(err => {
@@ -230,7 +235,7 @@ class AdminPanel extends Component {
                         dataFetch('/saveAuctionSummary', data)
                             .then(response => {
                                 if (response.status_code == 200) {
-                                    notifySuccess("Sold successfully");
+                                    notifySuccess('Sold successfully');
                                 } else {
                                     notifyError('' + response.message);
                                 }
@@ -752,22 +757,34 @@ class AdminPanel extends Component {
                                                                             ? 'Resume'
                                                                             : 'Pause'}
                                                                     </button>
-                                                                    <button
-                                                                        className="btn btn-danger m-1"
-                                                                        disabled={start && start !== catalog.id}
-                                                                        onClick={event => {
-                                                                            pauseCatalog === catalog.id
-                                                                                ? this.deleteBid(event, catalog)
-                                                                                : this.markSold(
-                                                                                      event,
-                                                                                      catalog.id,
-                                                                                      catalog
-                                                                                  );
-                                                                        }}>
-                                                                        {pauseCatalog === catalog.id
-                                                                            ? 'Delete'
-                                                                            : 'Sold'}
-                                                                    </button>
+                                                                    {pauseCatalog === catalog.id ? (
+                                                                        <button
+                                                                            className="btn btn-danger m-1"
+                                                                            disabled={start && start !== catalog.id}
+                                                                            onClick={event => {
+                                                                                this.deleteBid(event, catalog);
+                                                                            }}>
+                                                                            Delete
+                                                                        </button>
+                                                                    ) : (
+                                                                        <div />
+                                                                    )}
+                                                                    {pauseCatalog === catalog.id ? (
+                                                                        <button
+                                                                            className="btn btn-danger m-1"
+                                                                            disabled={start && start !== catalog.id}
+                                                                            onClick={() =>
+                                                                                this.markSold(
+                                                                                    event,
+                                                                                    catalog.id,
+                                                                                    catalog
+                                                                                )
+                                                                            }>
+                                                                            Sold
+                                                                        </button>
+                                                                    ) : (
+                                                                        <div />
+                                                                    )}
                                                                     {pauseCatalog === catalog.id ? (
                                                                         <button
                                                                             className="btn btn-danger m-1"

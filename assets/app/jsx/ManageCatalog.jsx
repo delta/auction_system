@@ -82,17 +82,21 @@ class ManageCatalog extends Component {
                 });
         } else {
             dataFetch('/createCatalog', data)
-                .then(data => {
-                    notifySuccess('Successfully Created');
-                    this.setState(
-                        {
-                            updateType: ''
-                        },
-                        () => {
-                            this.getCatalog();
-                            this.props.updateCatalog({owner_id: this.props.owner_id});
-                        }
-                    );
+                .then(response => {
+                    if (response.status_code == '200') {
+                        notifySuccess('Successfully Created');
+                        this.setState(
+                            {
+                                updateType: ''
+                            },
+                            () => {
+                                this.getCatalog();
+                                this.props.updateCatalog({owner_id: this.props.owner_id});
+                            }
+                        );
+                    } else {
+                        notifyError('' + response.message);
+                    }
                 })
                 .catch(err => {
                     notifyError('' + err.message);

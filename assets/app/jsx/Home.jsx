@@ -37,6 +37,8 @@ class Home extends Component {
                         this.setState({
                             liveAuctions: response.message
                         });
+                    } else {
+                        notifyError(response.message);
                     }
                 })
                 .catch(err => {
