@@ -9,9 +9,19 @@ import Home from './Home.jsx';
 import Login from './Login.jsx';
 import Auction from './Auction.jsx';
 import ManageCatalog from './ManageCatalog.jsx';
+import {ToastContainer} from 'react-toastify';
 
 ReactDOM.render(
     <BrowserRouter>
+        <ToastContainer
+            position="top-right"
+            hideProgressBar={false}
+            autoClose={3000}
+            newestOnTop={true}
+            closeOnClick={true}
+            draggable={false}
+            rtl={false}
+        />
         <Switch>
             <Route exact path="/" component={Welcome} />
             <Route exact path="/register" component={UserRegistration} />

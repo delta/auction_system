@@ -217,53 +217,65 @@ class AdminPanel extends Component {
             configData.is_open = this.state.is_open;
 
             socket.emit('openAuction', configData);
-            const {sold, catalogs, owner_id, url_slug: namespace} = this.state;
-            const data = {owner_id, namespace};
-            socket.on('stopBiddingSuccess', (catalog, bidDetails) => {
-                this.setState(
-                    {
-                        bidDetails
-                    },
-                    () => {
-                        const {currentBid: final_price, bidHolderId: user_id} = this.state.bidDetails;
-                        const {autoPlay, unsold} = this.state;
-                        let data = {};
-                        data.final_price = this.state.bidDetails.currentBid;
-                        data.user_id = this.state.bidDetails.bidHolderId;
-                        data.item_id = catalog.id;
-                        data.isAuthRequired = true;
-                        dataFetch('/saveAuctionSummary', data)
-                            .then(response => {
-                                if (response.status_code == 200) {
-                                    notifySuccess('Sold successfully');
-                                } else {
-                                    notifyError('' + response.message);
-                                }
-                            })
-                            .catch(err => {
-                                notifyError('' + err.response);
-                            });
-                        if (this.state.sold.length === this.state.catalogs.length) {
-                            this.closeAuction();
-                        }
-                    }
-                );
-            });
-            socket.on('skipBiddingSuccess', catalogName => {
-                notifySuccess('Catalog Skipped');
-                const {autoPlay, currentIndex, unsold} = this.state;
-                if (currentIndex < 0 || currentIndex > unsold.length) {
-                    return;
-                }
+        });
 
-                if (autoPlay) {
-                    this.markBiddingStart(unsold[currentIndex]);
+        socket.on('stopBiddingSuccess', (catalog, bidDetails) => {
+            notifySuccess('Sold successfully');
+
+            const {sold, unsold, autoPlay, currentIndex} = this.state;
+
+            sold.push(catalog.id);
+            unsold.splice(unsold.indexOf(catalog.id), 1);
+
+            this.setState(
+                {
+                    bidDetails,
+                    sold,
+                    start: '',
+                    allBids: [],
+                    pauseCatalog: ''
+                },
+                () => {
+                    if (this.state.sold.length === this.state.catalogs.length) {
+                        this.closeAuction();
+                    }
+
+                    if (autoPlay) {
+                        let nxtItemId;
+                        unsold.some(i => {
+                            if (parseInt(i) > parseInt(catalog.id)) {
+                                nxtItemId = i;
+                                return true;
+                            }
+                        });
+                        if (!nxtItemId) nxtItemId = unsold[0];
+                        this.markBiddingStart(nxtItemId);
+                    }
                 }
-            });
+            );
         });
-        socket.on('success', message => {
-            notifySuccess(message);
+
+        socket.on('skipBiddingSuccess', catalogName => {
+            notifySuccess('Catalog Skipped');
+            const {autoPlay, currentIndex, unsold} = this.state;
+            if (currentIndex < 0 || currentIndex > unsold.length) {
+                return;
+            }
+
+            this.setState(
+                {
+                    start: '',
+                    allBids: [],
+                    pauseCatalog: ''
+                },
+                () => {
+                    if (autoPlay) {
+                        this.markBiddingStart(unsold[currentIndex]);
+                    }
+                }
+            );
         });
+
         socket.on('onlineUsers', message => {
             dataFetch('/getRegisteredUser', {
                 auction_id: this.state.auction_id,
@@ -295,13 +307,23 @@ class AdminPanel extends Component {
                     notifyError('' + err.response);
                 });
         });
+
         socket.on('allBids', bidDetails => {
             this.setState({
                 allBids: bidDetails.reverse()
             });
         });
+
         socket.on('successfullyDeleted', () => {
             notifySuccess('SuccessFully Deleted');
+        });
+
+        socket.on('success', message => {
+            notifySuccess(message);
+        });
+
+        socket.on('notifyError', errorMessage => {
+            notifyError(errorMessage);
         });
     }
 
@@ -373,17 +395,14 @@ class AdminPanel extends Component {
 
     markBiddingSkip = (event, id, catalogName) => {
         event.preventDefault();
-        const {sold, catalogs, owner_id, url_slug: namespace, unsold, autoPlay} = this.state;
+        const {sold, owner_id, url_slug: namespace, unsold} = this.state;
         if (sold.includes(id)) {
             return;
         }
         let index = unsold.indexOf(id);
         index = (index + 1) % unsold.length;
         this.setState({
-            currentIndex: index,
-            start: '',
-            allBids: [],
-            pauseCatalog: ''
+            currentIndex: index
         });
 
         socket.emit('biddingSkip', owner_id, namespace, catalogName);
@@ -391,34 +410,11 @@ class AdminPanel extends Component {
 
     markSold = (event, id, catalog) => {
         event.preventDefault();
-        const {sold, catalogs, owner_id, url_slug: namespace, unsold, autoPlay} = this.state;
+        const {sold, owner_id} = this.state;
         if (sold.includes(id)) {
             return;
         }
-        sold.push(id);
-        unsold.splice(unsold.indexOf(id), 1);
-        this.setState(
-            {
-                sold,
-                start: '',
-                allBids: [],
-                pauseCatalog: ''
-            },
-            () => {}
-        );
         socket.emit('biddingStop', owner_id, namespace, catalog);
-
-        if (autoPlay) {
-            let nxtItemId;
-            unsold.some(i => {
-                if (parseInt(i) > parseInt(id)) {
-                    nxtItemId = i;
-                    return true;
-                }
-            });
-            if (!nxtItemId) nxtItemId = unsold[0];
-            this.markBiddingStart(nxtItemId);
-        }
     };
     markBiddingStart = id => {
         this.setState(
@@ -622,15 +618,6 @@ class AdminPanel extends Component {
         } else {
             return (
                 <div className="container" style={style.formBox}>
-                    <ToastContainer
-                        position="top-right"
-                        hideProgressBar={true}
-                        autoClose={4000}
-                        newestOnTop={true}
-                        closeOnClick={true}
-                        draggable={false}
-                        rtl={false}
-                    />
                     <div className="modal fade" id="myModal" role="dialog">
                         <div className="modal-dialog modal-lg">
                             <div className="modal-content">

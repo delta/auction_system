@@ -57,7 +57,8 @@ io.sockets.on('connection', socket => {
         handleConnections.joinAuction(socket, namespace, user_id);
     });
     socket.on('newBid', (namespace, user_id, userName, bid_value) => {
-        handleBiding.handleBid(io, namespace, user_id, userName, bid_value);
+        const clientSocket = handleConnections.getAllClientSockets(namespace)[user_id];
+        handleBiding.handleBid(io, socket, namespace, user_id, userName, bid_value, clientSocket);
     });
     socket.on('biddingStart', (namespace, owner_id, catalog) => {
         handleConnections.currentCatalog(socket, namespace, owner_id, catalog);

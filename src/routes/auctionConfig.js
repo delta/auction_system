@@ -88,9 +88,13 @@ app.post('/updateAuctionConfig', function(req, res) {
             raw: true,
             logging: false
         }
-    ).then(response => {
-        Sendresponse(res, 200, 'Config Updated Successfully');
-    });
+    )
+        .then(response => {
+            Sendresponse(res, 200, 'Config Updated Successfully');
+        })
+        .catch(err => {
+            Sendresponse(res, 400, err.message);
+        });
 });
 
 app.post('/authorizeAuction', (req, res) => {

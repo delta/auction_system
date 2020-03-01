@@ -30,13 +30,29 @@ app.use('/saveAuctionSummary', adminAuthCheck);
 
 app.post('/saveAuctionSummary', function(req, res) {
     const {user_id, item_id, final_price} = req.body;
-    models.AuctionSummary.build({
-        user_id,
-        item_id,
-        final_price
-    })
-        .save()
-        .then(response => {
+
+    Sequelize.sequelize
+        .transaction(function(t) {
+            return models.AuctionSummary.create(
+                {
+                    user_id,
+                    item_id,
+                    final_price
+                },
+                {transaction: t}
+            ).then(response => {
+                return models.User.increment(
+                    {balance: -final_price},
+                    {
+                        where: {
+                            id: user_id
+                        },
+                        transaction: t
+                    }
+                );
+            });
+        })
+        .then(user => {
             Sendresponse(res, 200, 'Saved Successfully');
         })
         .catch(err => {

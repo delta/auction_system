@@ -56,7 +56,15 @@ function resetBid(io, namespace, user_id, userName, bid_value) {
 }
 
 //handle bids for different auctions
-function handleBid(io, namespace, user_id, userName, bid_value) {
+function handleBid(io, socket, namespace, user_id, userName, bid_value, clientSocket) {
+    if (!clientSocket) return;
+
+    // check if the bid is within user's balance
+    if (clientSocket.balance < bid_value) {
+        socket.emit('notEnoughBalance');
+        return;
+    }
+
     //update bidDetails
     const object = {
         currentBid: bid_value,
