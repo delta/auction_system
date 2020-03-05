@@ -173,9 +173,14 @@ class Auction extends Component {
                 bid_value: catalog.base_price
             });
         });
-        socket.on('currentCatalogSold', catalog => {
+        socket.on('currentCatalogSold', (catalog, soldCatalog, bidDetails) => {
             this.setState({
                 catalog
+            });
+            Swal.fire({
+                title: `${bidDetails.bidHolderName} bought ${soldCatalog.name} at ${bidDetails.currentBid}`,
+                showConfirmButton: true,
+                timer: 3000
             });
         });
         socket.on('pausedBidding', () => {
@@ -197,13 +202,6 @@ class Auction extends Component {
             });
             this.setState({
                 catalog: ''
-            });
-        });
-        socket.on('catalogSold', (catalogName, bidDetails) => {
-            Swal.fire({
-                title: `${bidDetails.bidHolderName} buy ${catalogName} at ${bidDetails.currentBid}`,
-                showConfirmButton: true,
-                timer: 3000
             });
         });
         socket.on('notifyError', errorMessage => {

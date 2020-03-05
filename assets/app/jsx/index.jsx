@@ -4,7 +4,7 @@ import {BrowserRouter, Route, Switch} from 'react-router-dom';
 import Welcome from './Welcome.jsx';
 import PageNotFound from './PageNotFound.jsx';
 import UserRegistration from './UserRegistration.jsx';
-import AdminPanel from './AdminPanel.jsx';
+import AdminPanel from './AdminPanel/AdminPanel.jsx';
 import Home from './Home.jsx';
 import Login from './Login.jsx';
 import Auction from './Auction.jsx';

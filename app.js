@@ -58,7 +58,8 @@ io.sockets.on('connection', socket => {
     });
     socket.on('newBid', (namespace, user_id, userName, bid_value) => {
         const clientSocket = handleConnections.getAllClientSockets(namespace)[user_id];
-        handleBiding.handleBid(io, socket, namespace, user_id, userName, bid_value, clientSocket);
+        const adminSocket = handleConnections.getAdminSocket(namespace);
+        handleBiding.handleBid(io, socket, namespace, user_id, userName, bid_value, clientSocket, adminSocket);
     });
     socket.on('biddingStart', (namespace, owner_id, catalog) => {
         handleConnections.currentCatalog(socket, namespace, owner_id, catalog);

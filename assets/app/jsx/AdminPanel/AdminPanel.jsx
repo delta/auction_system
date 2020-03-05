@@ -1,23 +1,13 @@
 import React, {Component} from 'react';
-import dataFetch from './DataFetch';
+import dataFetch from '../DataFetch';
 import {Form, Field} from 'react-final-form';
 import io from 'socket.io-client';
-import {notifyError, notifySuccess} from '../Common/common.js';
+import {notifyError, notifySuccess} from '../../Common/common.js';
 import {ToastContainer} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Swal from 'sweetalert2';
-import ManageCatalog from './ManageCatalog.jsx';
-
-const style = {
-    formBox: {
-        width: '600px',
-        height: '600px',
-        position: 'absolute',
-        left: '45%',
-        top: '50%',
-        margin: '-300px 0 0 -150px'
-    }
-};
+import ManageCatalog from '../ManageCatalog.jsx';
+import {style} from './style';
 
 let socket;
 
@@ -44,7 +34,8 @@ class AdminPanel extends Component {
             allBids: [],
             deleteBid: [],
             autoPlay: false,
-            currentIndex: -1
+            currentIndex: -1,
+            currentCatalog: ''
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -325,6 +316,26 @@ class AdminPanel extends Component {
         socket.on('notifyError', errorMessage => {
             notifyError(errorMessage);
         });
+
+        socket.on('currentAllBids', allBids => {
+            this.setState({
+                allBids: allBids.reverse()
+            });
+        });
+
+        socket.on('currentCatalog', catalog => {
+            this.setState({
+                currentCatalog: catalog
+            });
+        });
+
+        socket.on('currentBidStatus', message => {
+            this.setState({
+                bid_value: message.currentBid == 0 ? this.state.bid_value : message.currentBid,
+                currentBidHolder: message.bidHolderId,
+                bidHolderName: message.bidHolderName
+            });
+        });
     }
 
     closeAuction() {
@@ -410,7 +421,7 @@ class AdminPanel extends Component {
 
     markSold = (event, id, catalog) => {
         event.preventDefault();
-        const {sold, owner_id} = this.state;
+        const {sold, owner_id, url_slug: namespace} = this.state;
         if (sold.includes(id)) {
             return;
         }
@@ -617,41 +628,24 @@ class AdminPanel extends Component {
             );
         } else {
             return (
-                <div className="container" style={style.formBox}>
-                    <div className="modal fade" id="myModal" role="dialog">
-                        <div className="modal-dialog modal-lg">
-                            <div className="modal-content">
-                                <div className="modal-header d-flex justify-content-between">
-                                    <div>Manage Catalog</div>
-                                    <div onClick={this.manageCatalog}>
-                                        <button
-                                            type="button"
-                                            className="close"
-                                            data-toggle="modal"
-                                            data-target="#myModal"
-                                            aria-label="Close">
-                                            <span aria-hidden="true">&times;</span>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div className="modal-body">
-                                    {manageCatalog && (
-                                        <ManageCatalog
-                                            owner_id={this.state.owner_id}
-                                            catalogId={this.state.start}
-                                            updateCatalog={data => {
-                                                this.getCatalog(data);
-                                            }}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="d-flex justify-content-between">
+                <div style={style.container}>
+                    <div style={style.header}>
+                        <button className="btn btn-primary" onClick={this.openAuction} disabled={is_open}>
+                            Open Auction
+                        </button>
+                        <button className="btn btn-danger" onClick={this.closeAuction} disabled={!is_open}>
+                            Close Auction
+                        </button>
                         <div>
                             <h2>AdminPanel : {url_slug}</h2>
                         </div>
+                        <button
+                            className="btn btn-warning"
+                            data-toggle="modal"
+                            data-target="#myModal"
+                            onClick={this.manageCatalog}>
+                            Manage Catalog
+                        </button>
                         <div>
                             <input type="checkbox" data-toggle="toggle" onChange={this.toggleAutoPlay} />
                             AutoPlay
@@ -666,45 +660,8 @@ class AdminPanel extends Component {
                             Registration Status
                         </div>
                     </div>
-                    <div className="row">
-                        <div className="col-md-4 border-right">
-                            <h5>
-                                UsersCount: {clientIds.length}/{max_users}
-                            </h5>
-                            <h6>ActiveUsers:</h6>
-                            <ul>
-                                {activeUsers &&
-                                    activeUsers.map(user => (
-                                        <li
-                                            className={`font-weight-bolder online-user-list ${
-                                                !this.state.clientIds.includes(String(user.id))
-                                                    ? 'text-red'
-                                                    : 'text-success'
-                                            }`}
-                                            onClick={() => this.showUserDetail(user)}>
-                                            {user.name}
-                                        </li>
-                                    ))}
-                            </ul>
-                        </div>
-                        <div className="col-md-8">
-                            <button className="btn btn-primary" onClick={this.openAuction} disabled={is_open}>
-                                Open Auction
-                            </button>
-                            <button className="btn btn-danger" onClick={this.closeAuction} disabled={!is_open}>
-                                Close Auction
-                            </button>
-                            {/* <button className="btn btn-warning" onClick={this.manageCatalog}>
-
-                                {!manageCatalog ? 'Manage Catalog' : 'Back'}
-                            </button> */}
-                            <button
-                                className="btn btn-warning"
-                                data-toggle="modal"
-                                data-target="#myModal"
-                                onClick={this.manageCatalog}>
-                                Manage Catalog
-                            </button>
+                    <div style={style.topContainer}>
+                        <div style={style.catalogsContainer}>
                             {this.state.is_open && (
                                 <div className="mt-5">
                                     <div className="row">
@@ -794,44 +751,131 @@ class AdminPanel extends Component {
                                                     )}
                                                 </div>
                                             </div>
-                                            {pauseCatalog === catalog.id && allBids.length > 1 && (
-                                                <div className="row">
-                                                    <div className="col-md-3 font-weight-bold text-center">Bid</div>
-                                                    <div className="col-md-3 font-weight-bold text-center">Name</div>
-                                                    <div className="col-md-6 font-weight-bold text-center">Delete</div>
-                                                </div>
-                                            )}
-                                            {pauseCatalog === catalog.id &&
-                                                allBids &&
-                                                allBids.map(
-                                                    bid =>
-                                                        bid.currentBid !== 0 && (
-                                                            <div className="row">
-                                                                <div className="col-md-3 text-center">
-                                                                    {bid.currentBid}
-                                                                </div>
-                                                                <div className="col-md-3 text-center">
-                                                                    {bid.bidHolderName}
-                                                                </div>
-                                                                <div className="col-md-6 text-center">
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        name={`bidDelete&{bid.currentBid}`}
-                                                                        checked={deleteBid.includes(
-                                                                            bid.currentBid.toString()
-                                                                        )}
-                                                                        onChange={e => this.handleChecked(e)}
-                                                                        id={bid.currentBid}
-                                                                        value={bid.currentBid}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                        )
-                                                )}
                                         </>
                                     ))}
                                 </div>
                             )}
+                        </div>
+
+                        <div className="modal fade" id="myModal" role="dialog">
+                            <div className="modal-dialog modal-lg">
+                                <div className="modal-content">
+                                    <div className="modal-header d-flex justify-content-between">
+                                        <div>Manage Catalog</div>
+                                        <div onClick={this.manageCatalog}>
+                                            <button
+                                                type="button"
+                                                className="close"
+                                                data-toggle="modal"
+                                                data-target="#myModal"
+                                                aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="modal-body">
+                                        {manageCatalog && (
+                                            <ManageCatalog
+                                                owner_id={this.state.owner_id}
+                                                catalogId={this.state.start}
+                                                updateCatalog={data => {
+                                                    this.getCatalog(data);
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={style.currentBidContainer}>
+                            {this.state.currentCatalog ? (
+                                <div className="card" style={{width: '300px'}}>
+                                    <img
+                                        className="card-img-top"
+                                        src={
+                                            this.state.currentCatalog.thumbnail_url
+                                                ? this.state.currentCatalog.thumbnail_url
+                                                : 'https://image.shutterstock.com/image-vector/auction-label-red-band-sign-260nw-1514047166.jpg'
+                                        }
+                                        alt="Card image"
+                                    />
+                                    <div className="card-body">
+                                        <h5>Catalog Details</h5>
+                                        <div className="row font-weight-bold">
+                                            <div className="col-md-6 text-capitalize">Name</div>
+                                            <div className="col-md-6 text-capitalize">Base Price</div>
+                                        </div>
+                                        <div className="row">
+                                            <div className="col-md-6 text-capitalize">
+                                                {this.state.currentCatalog.name}
+                                            </div>
+                                            <div className="col-md-6 text-capitalize">
+                                                {this.state.currentCatalog.base_price}
+                                            </div>
+                                        </div>
+                                        <h3>
+                                            CurrentBid:{' '}
+                                            {this.state.bid_value == this.state.currentCatalog.base_price
+                                                ? '-'
+                                                : this.state.bid_value}
+                                        </h3>
+                                        <h4>By: {this.state.bidHolderName}</h4>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center text-danger">Yet to start the bidding</div>
+                            )}
+                        </div>
+
+                        <div style={style.allBidsContainer}>
+                            {allBids.length > 1 && (
+                                <div className="row">
+                                    <div className="col-md-3 font-weight-bold text-center">Bid</div>
+                                    <div className="col-md-3 font-weight-bold text-center">Name</div>
+                                    <div className="col-md-6 font-weight-bold text-center">Delete</div>
+                                </div>
+                            )}
+                            {allBids &&
+                                allBids.map(
+                                    bid =>
+                                        bid.currentBid !== 0 && (
+                                            <div className="row">
+                                                <div className="col-md-3 text-center">{bid.currentBid}</div>
+                                                <div className="col-md-3 text-center">{bid.bidHolderName}</div>
+                                                <div className="col-md-6 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        name={`bidDelete&{bid.currentBid}`}
+                                                        checked={deleteBid.includes(bid.currentBid.toString())}
+                                                        onChange={e => this.handleChecked(e)}
+                                                        id={bid.currentBid}
+                                                        value={bid.currentBid}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )
+                                )}
+                        </div>
+                    </div>
+
+                    <div style={style.activeUsersContainer}>
+                        <h5>
+                            Active Users: {clientIds.length}/{max_users}
+                        </h5>
+                        <div style={style.usersGrid}>
+                            {activeUsers &&
+                                activeUsers.map(user => (
+                                    <div
+                                        style={style.userListItem}
+                                        className={`font-weight-bolder online-user-list ${
+                                            !this.state.clientIds.includes(String(user.id))
+                                                ? 'text-red'
+                                                : 'text-success'
+                                        }`}
+                                        onClick={() => this.showUserDetail(user)}>
+                                        {user.name}
+                                    </div>
+                                ))}
                         </div>
                     </div>
                 </div>

@@ -9,6 +9,10 @@ const getAllClientSockets = namespace => {
     return clientSockets[namespace];
 };
 
+const getAdminSocket = namespace => {
+    return adminSockets[namespace].socket;
+};
+
 //Auction owner creating a room
 function ownerSocket(socket, config) {
     const namespace = config.url_slug;
@@ -35,6 +39,7 @@ function currentCatalog(socket, namespace, owner_id, catalog) {
         currentCatalog: catalog
     };
     socket.broadcast.to(namespace).emit('currentCatalog', catalog);
+    socket.emit('currentCatalog', catalog);
 }
 
 // TODO: migrate all bidding functions to nid manager
@@ -100,9 +105,10 @@ function stopBidding(io, socket, namespace, user_id, catalog) {
                 currentCatalog: ''
             };
 
-            socket.broadcast.to(namespace).emit('catalogSold', catalog.name, bidDetails);
             socket.emit('stopBiddingSuccess', catalog, bidDetails);
-            socket.broadcast.to(namespace).emit('currentCatalogSold', adminSockets[namespace].currentCatalog);
+            socket.broadcast
+                .to(namespace)
+                .emit('currentCatalogSold', adminSockets[namespace].currentCatalog, catalog, bidDetails);
             resumeBidding(io, socket, namespace);
             bidManager.resetBid(io, namespace, '-', -1, 0);
         })
@@ -219,5 +225,6 @@ module.exports = {
     resumeBidding,
     skipBidding,
     changeRegistrationStatus,
-    getAllClientSockets
+    getAllClientSockets,
+    getAdminSocket
 };
