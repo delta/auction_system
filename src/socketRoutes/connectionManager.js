@@ -5,13 +5,13 @@ const bidManager = require('./bidManager');
 let adminSockets = {}; // {"admin1": {socket, id}, "admin2": {socket, id}};
 let clientSockets = {}; // {"room1": {"u1": socket, "u2": socket}, "room2": {"u3": socket}}
 
-function getAllClientSockets (namespace) {
+function getAllClientSockets(namespace) {
     return clientSockets[namespace];
-};
+}
 
-function getAdminSocket (namespace) {
+function getAdminSocket(namespace) {
     return adminSockets[namespace].socket;
-};
+}
 
 //Auction owner creating a room
 function ownerSocket(socket, config) {
@@ -59,12 +59,11 @@ function skipBidding(io, socket, namespace, user_id, catalogName) {
 }
 
 function stopBidding(io, socket, namespace, user_id, catalog, isSecretBid) {
-    
     let bidDetails = {};
-    
-    if(!isSecretBid){
+
+    if (!isSecretBid) {
         bidDetails = bidManager.getCurrentBid(namespace);
-    }else {
+    } else {
         bidDetails = bidManager.getHighestSecretBid(namespace);
     }
 

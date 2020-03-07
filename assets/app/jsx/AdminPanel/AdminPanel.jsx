@@ -230,7 +230,7 @@ class AdminPanel extends Component {
                     pauseCatalog: '',
                     secretBids: [],
                     deleteSecretBids: [],
-                    isSecretBid: false,
+                    isSecretBid: false
                 },
                 () => {
                     if (this.state.sold.length === this.state.catalogs.length) {
@@ -537,7 +537,7 @@ class AdminPanel extends Component {
     manageCatalog = () => {
         this.setState(
             {
-                manageCatalog: !this.state.manageCatalog
+                manageCatalog: true
             },
             () => {
                 if (!this.state.manageCatalog) {
@@ -934,18 +934,19 @@ class AdminPanel extends Component {
                                                 {this.state.currentCatalog.base_price}
                                             </div>
                                         </div>
-                                        {!isSecretBid?(
+                                        {!isSecretBid ? (
                                             <>
-                                            <h3>
-                                                CurrentBid:{' '}
-                                                {this.state.bid_value == this.state.currentCatalog.base_price
-                                                    ? '-'
-                                                    : this.state.bid_value}
-                                            </h3>
-                                            <h4>By: {this.state.bidHolderName}</h4>
+                                                <h3>
+                                                    CurrentBid:{' '}
+                                                    {this.state.bid_value == this.state.currentCatalog.base_price
+                                                        ? '-'
+                                                        : this.state.bid_value}
+                                                </h3>
+                                                <h4>By: {this.state.bidHolderName}</h4>
                                             </>
-                                            ):
-                                            (<div/>)}
+                                        ) : (
+                                            <div />
+                                        )}
                                     </div>
                                 </div>
                             ) : (
@@ -957,7 +958,6 @@ class AdminPanel extends Component {
                             <div style={style.allBidsContainer}>
                                 {secretBids.length > 0 && (
                                     <div className="row">
-                                        <div className="col-md-3 font-weight-bold text-center">Bid</div>
                                         <div className="col-md-3 font-weight-bold text-center">Name</div>
                                         <div className="col-md-6 font-weight-bold text-center">Delete</div>
                                     </div>
@@ -967,13 +967,14 @@ class AdminPanel extends Component {
                                         bid =>
                                             bid.currentBid !== 0 && (
                                                 <div className="row">
-                                                    <div className="col-md-3 text-center">{bid.currentBid}</div>
                                                     <div className="col-md-3 text-center">{bid.bidHolderName}</div>
                                                     <div className="col-md-6 text-center">
                                                         <input
                                                             type="checkbox"
                                                             name={`bidDelete&{bid.bidGolderId}`}
-                                                            checked={deleteSecretBids.includes(bid.bidHolderId.toString())}
+                                                            checked={deleteSecretBids.includes(
+                                                                bid.bidHolderId.toString()
+                                                            )}
                                                             onChange={e => this.handleSecretChecked(e)}
                                                             id={bid.bidHolderId}
                                                             value={bid.bidHolderId}
