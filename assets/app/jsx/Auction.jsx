@@ -2,7 +2,7 @@ import React, {Component} from 'react';
 import dataFetch from './DataFetch';
 import io from 'socket.io-client';
 import Swal from 'sweetalert2';
-import {notifyError} from '../Common/common';
+import {notifyError, notifySuccess} from '../Common/common';
 
 const style = {
     formBox: {
@@ -30,7 +30,8 @@ class Auction extends Component {
             currentBidHolder: '',
             bidHolderName: '',
             is_open: false,
-            biddingPaused: false
+            biddingPaused: false,
+            balance: 0
         };
         this.handleBid = this.handleBid.bind(this);
     }
@@ -98,8 +99,12 @@ class Auction extends Component {
                 auction_id: parseInt(this.props.match.params.id)
             };
             data.isAuthRequired = true;
-            dataFetch('/userAuctionRegistration', data).then(user => {
-                socket.emit('joinRoom', this.state.namespace, this.state.user_id);
+            dataFetch('/userAuctionRegistration', data).then(response => {
+                if (response.status_code == '200') {
+                    socket.emit('joinRoom', this.state.namespace, this.state.user_id);
+                } else {
+                    notifyError(response.message);
+                }
             });
         });
         socket.on('max_limit_exceeded', () => {
@@ -142,10 +147,20 @@ class Auction extends Component {
             });
             socket.close();
         });
-        socket.on('joinedSuccessful', biddingPaused => {
+        socket.on('joinedSuccessful', (biddingPaused, balance) => {
             this.setState({
                 loading: false,
-                biddingPaused: biddingPaused
+                biddingPaused: biddingPaused,
+                balance: balance
+            });
+        });
+        socket.on('notEnoughBalance', () => {
+            notifyError('Not enough balance for this bid');
+        });
+        socket.on('updateBalance', balance => {
+            console.log(balance);
+            this.setState({
+                balance: balance
             });
         });
         socket.on('authError', () => {
@@ -158,9 +173,14 @@ class Auction extends Component {
                 bid_value: catalog.base_price
             });
         });
-        socket.on('currentCatalogSold', catalog => {
+        socket.on('currentCatalogSold', (catalog, soldCatalog, bidDetails) => {
             this.setState({
                 catalog
+            });
+            Swal.fire({
+                title: `${bidDetails.bidHolderName} bought ${soldCatalog.name} at ${bidDetails.currentBid}`,
+                showConfirmButton: true,
+                timer: 3000
             });
         });
         socket.on('pausedBidding', () => {
@@ -184,12 +204,8 @@ class Auction extends Component {
                 catalog: ''
             });
         });
-        socket.on('catalogSold', (catalogName, bidDetails) => {
-            Swal.fire({
-                title: `${bidDetails.bidHolderName} buy ${catalogName} at ${bidDetails.currentBid}`,
-                showConfirmButton: true,
-                timer: 3000
-            });
+        socket.on('notifyError', errorMessage => {
+            notifyError(errorMessage);
         });
     };
 
@@ -294,6 +310,7 @@ class Auction extends Component {
                                                 <div className="col-md-6 text-capitalize">{catalog.base_price}</div>
                                             </div>
                                         </div>
+                                        <h3>Balance: {this.state.balance}</h3>
                                         <h3>
                                             CurrentBid:{' '}
                                             {this.state.bid_value == catalog.base_price ? '-' : this.state.bid_value}
@@ -301,7 +318,7 @@ class Auction extends Component {
                                         <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
                                         <button
                                             className="btn btn-primary"
-                                            disabled={isCurrentBidByU}
+                                            disabled={isCurrentBidByU || this.state.balance < newBid}
                                             onClick={() => {
                                                 this.handleBid(newBid);
                                             }}>
@@ -319,7 +336,9 @@ class Auction extends Component {
                 </div>
             </div>
         ) : (
-            <div className="align-content-center">Loading</div>
+            <div className="align-content-center">
+                <p>Auction is either closed or not open yet!</p>
+            </div>
         );
     }
 }

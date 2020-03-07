@@ -1,9 +1,17 @@
-const Sequelize = require('sequelize');
+const Sequelize = require(__dirname + '/../../models/index');
 const models = require(__dirname + '/../../models/');
 const bidManager = require('./bidManager');
 
 let adminSockets = {}; // {"admin1": {socket, id}, "admin2": {socket, id}};
 let clientSockets = {}; // {"room1": {"u1": socket, "u2": socket}, "room2": {"u3": socket}}
+
+const getAllClientSockets = namespace => {
+    return clientSockets[namespace];
+};
+
+const getAdminSocket = namespace => {
+    return adminSockets[namespace].socket;
+};
 
 //Auction owner creating a room
 function ownerSocket(socket, config) {
@@ -31,8 +39,10 @@ function currentCatalog(socket, namespace, owner_id, catalog) {
         currentCatalog: catalog
     };
     socket.broadcast.to(namespace).emit('currentCatalog', catalog);
+    socket.emit('currentCatalog', catalog);
 }
 
+// TODO: migrate all bidding functions to nid manager
 function skipBidding(io, socket, namespace, user_id, catalogName) {
     adminSockets[namespace] = {
         ...adminSockets[namespace],
@@ -48,18 +58,64 @@ function skipBidding(io, socket, namespace, user_id, catalogName) {
 }
 
 function stopBidding(io, socket, namespace, user_id, catalog) {
-    adminSockets[namespace] = {
-        ...adminSockets[namespace],
-        socket,
-        id: user_id,
-        currentCatalog: ''
-    };
     const bidDetails = bidManager.getCurrentBid(namespace);
-    socket.broadcast.to(namespace).emit('catalogSold', catalog.name, bidDetails);
-    socket.emit('stopBiddingSuccess', catalog, bidDetails);
-    socket.broadcast.to(namespace).emit('currentCatalogSold', adminSockets[namespace].currentCatalog);
-    resumeBidding(io, socket, namespace);
-    bidManager.resetBid(io, namespace, '-', -1, 0);
+
+    let clientSocket = clientSockets[namespace][bidDetails.bidHolderId];
+
+    if (!clientSocket) {
+        socket.emit('notifyError', 'No bid for this item');
+        return;
+    }
+
+    // check if the bid is within user's balance
+    if (clientSocket.balance < bidDetails.currentBid) {
+        socket.emit('notifyError', 'Not enough balance');
+        return;
+    }
+
+    Sequelize.sequelize
+        .transaction(t => {
+            return models.AuctionSummary.create(
+                {
+                    user_id: bidDetails.bidHolderId,
+                    item_id: catalog.id,
+                    final_price: bidDetails.currentBid
+                },
+                {transaction: t}
+            ).then(response => {
+                return models.User.decrement(
+                    {balance: bidDetails.currentBid},
+                    {
+                        where: {
+                            id: bidDetails.bidHolderId
+                        },
+                        transaction: t
+                    }
+                );
+            });
+        })
+        .then(user => {
+            clientSocket.balance -= bidDetails.currentBid;
+            clientSocket.emit('updateBalance', clientSocket.balance);
+
+            adminSockets[namespace] = {
+                ...adminSockets[namespace],
+                socket,
+                id: user_id,
+                currentCatalog: ''
+            };
+
+            socket.emit('stopBiddingSuccess', catalog, bidDetails);
+            socket.broadcast
+                .to(namespace)
+                .emit('currentCatalogSold', adminSockets[namespace].currentCatalog, catalog, bidDetails);
+            resumeBidding(io, socket, namespace);
+            bidManager.resetBid(io, namespace, '-', -1, 0);
+        })
+        .catch(err => {
+            socket.emit('notifyError', er.message);
+        });
+
     return;
 }
 
@@ -114,18 +170,6 @@ function joinAuction(socket, namespace, user_id) {
     } else if (Object.keys(clientSockets[namespace]).length + 1 > adminSockets[namespace].max_user) {
         socket.emit('max_limit_exceeded');
     } else {
-        //store user_id & namespace data in socket session for this client
-        socket.user_id = user_id;
-        socket.namespace = namespace;
-        //if auction is live
-        //update clinetSockets by adding client entry to correct room
-        clientSockets[namespace][user_id] = socket;
-        //add client to auction room
-        socket.join(namespace);
-        socket.emit('currentCatalog', adminSockets[namespace].currentCatalog);
-        // send current bidDetails to this newly added client
-        bidManager.showCurrentBid(socket, namespace);
-
         const handshakeData = socket.request;
         let u_id = handshakeData._query.userIdForAuth;
         let user_token = handshakeData._query.user_token;
@@ -133,7 +177,23 @@ function joinAuction(socket, namespace, user_id) {
         models.User.findOne({where: {id: u_id, token: user_token}, raw: true, logging: false})
             .then(function(user) {
                 if (user) {
-                    socket.emit('joinedSuccessful', adminSockets[namespace].paused);
+                    //store user_id & namespace data in socket session for this client
+                    socket.user_id = user_id;
+                    socket.namespace = namespace;
+                    socket.balance = user.balance;
+                    //if auction is live
+                    //update clinetSockets by adding client entry to correct room
+                    clientSockets[namespace][user_id] = socket;
+                    //add client to auction room
+                    socket.join(namespace);
+
+                    socket.emit('joinedSuccessful', adminSockets[namespace].paused, socket.balance);
+                    socket.emit('currentCatalog', adminSockets[namespace].currentCatalog);
+                    // send current bidDetails to this newly added client
+                    bidManager.showCurrentBid(socket, namespace);
+
+                    //inform owner with updated list of active clientIds
+                    adminSockets[namespace].socket.emit('onlineUsers', Object.keys(clientSockets[namespace]));
                 } else {
                     socket.emit('authError');
                 }
@@ -142,9 +202,6 @@ function joinAuction(socket, namespace, user_id) {
                 console.log('ERROR: ' + err.message);
                 socket.emit('authError');
             });
-
-        //inform owner with updated list of active clientIds
-        adminSockets[namespace].socket.emit('onlineUsers', Object.keys(clientSockets[namespace]));
     }
 }
 
@@ -167,5 +224,7 @@ module.exports = {
     pauseBidding,
     resumeBidding,
     skipBidding,
-    changeRegistrationStatus
+    changeRegistrationStatus,
+    getAllClientSockets,
+    getAdminSocket
 };

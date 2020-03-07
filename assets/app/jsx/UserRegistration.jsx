@@ -1,6 +1,7 @@
 import React, {Component} from 'react';
 import dataFetch from './DataFetch';
 import {Form, Field} from 'react-final-form';
+import {notifyError} from '../Common/common';
 
 const style = {
     formBox: {
@@ -28,6 +29,8 @@ class UserRegistration extends Component {
             .then(response => {
                 if (response.status_code == 200) {
                     window.location.href = '/login';
+                } else {
+                    notifyError(response.message);
                 }
             })
             .catch(err => {

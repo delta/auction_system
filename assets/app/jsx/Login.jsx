@@ -29,6 +29,8 @@ class Login extends Component {
                     } else {
                         window.location.href = '/home';
                     }
+                } else {
+                    notifyError('' + response.message);
                 }
             })
             .catch(err => {
