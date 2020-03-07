@@ -53,12 +53,15 @@ function getCurrentBid(namespace) {
     return bid[bid.length - 1];
 }
 
-function getHighestSecretBid(namespace){
+function getHighestSecretBid(namespace) {
     let secretBids = secretBidDetails[namespace];
 
-    let bid = secretBids.reduce((previous,current)=>{
-        return (previous.currentBid > current.currentBid) ? previous: current   
-    },{currentBid:0,bidHolderId:0,bidHolderName:''})
+    let bid = secretBids.reduce(
+        (previous, current) => {
+            return previous.currentBid > current.currentBid ? previous : current;
+        },
+        {currentBid: 0, bidHolderId: 0, bidHolderName: ''}
+    );
 
     return bid;
 }

@@ -157,7 +157,7 @@ class Auction extends Component {
             socket.close();
         });
         socket.on('joinedSuccessful', (biddingPaused, balance, secretBid, secretBidDone) => {
-            console.log("Secret Bid",secretBid,secretBidDone,biddingPaused)
+            console.log('Secret Bid', secretBid, secretBidDone, biddingPaused);
             this.setState({
                 loading: false,
                 biddingPaused: biddingPaused,
@@ -188,14 +188,14 @@ class Auction extends Component {
         socket.on('currentCatalog', catalog => {
             this.setState({
                 catalog,
-                bid_value: catalog.base_price,
+                bid_value: catalog.base_price
             });
         });
         socket.on('currentCatalogSold', (catalog, soldCatalog, bidDetails) => {
             this.setState({
                 catalog,
                 isSecretBid: false,
-                secretBidDone: false,
+                secretBidDone: false
             });
             Swal.fire({
                 title: `${bidDetails.bidHolderName} bought ${soldCatalog.name} at ${bidDetails.currentBid}`,
@@ -234,7 +234,7 @@ class Auction extends Component {
             this.setState({
                 catalog: '',
                 isSecretBid: false,
-                secretBidDone: false,
+                secretBidDone: false
             });
         });
         socket.on('notifyError', errorMessage => {
@@ -281,8 +281,8 @@ class Auction extends Component {
         }
         let bidAmount = parseInt(value);
 
-        if(this.state.balance < bidAmount){
-            notifyError("Not enough balance");
+        if (this.state.balance < bidAmount) {
+            notifyError('Not enough balance');
             return;
         }
         this.setState({
