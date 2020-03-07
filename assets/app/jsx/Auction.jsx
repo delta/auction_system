@@ -31,10 +31,14 @@ class Auction extends Component {
             bidHolderName: '',
             is_open: false,
             biddingPaused: false,
-            balance: 0
+            balance: 0,
+            isSecretBid: false,
+            secretBidDone: false
         };
         this.handleBid = this.handleBid.bind(this);
     }
+
+    bidRef = {};
 
     componentDidMount() {
         this.checkStatus();
@@ -141,18 +145,32 @@ class Auction extends Component {
                 bidHolderName: message.bidHolderName
             });
         });
+        socket.on('canSecretBid', () => {
+            this.setState({
+                secretBidDone: false
+            });
+        });
         socket.on('auctionClosed', message => {
             this.setState({
                 is_open: false
             });
             socket.close();
         });
-        socket.on('joinedSuccessful', (biddingPaused, balance) => {
+        socket.on('joinedSuccessful', (biddingPaused, balance, secretBid, secretBidDone) => {
+            console.log("Secret Bid",secretBid,secretBidDone,biddingPaused)
             this.setState({
                 loading: false,
                 biddingPaused: biddingPaused,
-                balance: balance
+                balance: balance,
+                isSecretBid: secretBid,
+                secretBidDone: secretBidDone
             });
+        });
+        socket.on('alreadyBid', () => {
+            this.setState({
+                secretBidDone: true
+            });
+            notifyError('You have already bid');
         });
         socket.on('notEnoughBalance', () => {
             notifyError('Not enough balance for this bid');
@@ -170,12 +188,14 @@ class Auction extends Component {
         socket.on('currentCatalog', catalog => {
             this.setState({
                 catalog,
-                bid_value: catalog.base_price
+                bid_value: catalog.base_price,
             });
         });
         socket.on('currentCatalogSold', (catalog, soldCatalog, bidDetails) => {
             this.setState({
-                catalog
+                catalog,
+                isSecretBid: false,
+                secretBidDone: false,
             });
             Swal.fire({
                 title: `${bidDetails.bidHolderName} bought ${soldCatalog.name} at ${bidDetails.currentBid}`,
@@ -194,6 +214,17 @@ class Auction extends Component {
             });
         });
 
+        socket.on('secretBidStatus', isSecretBid => {
+            this.setState({
+                isSecretBid: isSecretBid
+            });
+            if (isSecretBid) {
+                notifySuccess('Secret Bid has started');
+            } else {
+                notifySuccess('Secret Bid has ended');
+            }
+        });
+
         socket.on('catalogSkip', catalogName => {
             Swal.fire({
                 title: `${catalogName} has been skipped`,
@@ -201,7 +232,9 @@ class Auction extends Component {
                 timer: 3000
             });
             this.setState({
-                catalog: ''
+                catalog: '',
+                isSecretBid: false,
+                secretBidDone: false,
             });
         });
         socket.on('notifyError', errorMessage => {
@@ -240,6 +273,24 @@ class Auction extends Component {
         socket.emit('newBid', this.state.namespace, this.state.user_id, this.state.userName, bidAmount);
     }
 
+    handleSecretBid = () => {
+        let value = this.bidRef.value;
+        if (isNaN(value) || parseInt(value) <= 0) {
+            notifyError('Enter a proper bid value');
+            return;
+        }
+        let bidAmount = parseInt(value);
+
+        if(this.state.balance < bidAmount){
+            notifyError("Not enough balance");
+            return;
+        }
+        this.setState({
+            secretBidDone: true
+        });
+        socket.emit('newSecretBid', this.state.namespace, this.state.user_id, this.state.userName, bidAmount);
+    };
+
     getBidAmount() {
         const {bid_value} = this.state;
         let bidString = bid_value + '';
@@ -268,7 +319,7 @@ class Auction extends Component {
 
     render() {
         let isCurrentBidByU = false;
-        const {catalog, biddingPaused, bid_value} = this.state;
+        const {catalog, biddingPaused, bid_value, isSecretBid, secretBidDone} = this.state;
         if (this.state.user_id == this.state.currentBidHolder) {
             isCurrentBidByU = true;
         }
@@ -311,19 +362,45 @@ class Auction extends Component {
                                             </div>
                                         </div>
                                         <h3>Balance: {this.state.balance}</h3>
-                                        <h3>
-                                            CurrentBid:{' '}
-                                            {this.state.bid_value == catalog.base_price ? '-' : this.state.bid_value}
-                                        </h3>
-                                        <h4>By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}</h4>
-                                        <button
-                                            className="btn btn-primary"
-                                            disabled={isCurrentBidByU || this.state.balance < newBid}
-                                            onClick={() => {
-                                                this.handleBid(newBid);
-                                            }}>
-                                            Bid {newBid} (+{bidDiff})
-                                        </button>
+                                        {!isSecretBid ? (
+                                            <>
+                                                <h3>
+                                                    CurrentBid:{' '}
+                                                    {this.state.bid_value == catalog.base_price
+                                                        ? '-'
+                                                        : this.state.bid_value}
+                                                </h3>
+                                                <h4>
+                                                    By: {isCurrentBidByU == true ? 'YOU' : this.state.bidHolderName}
+                                                </h4>
+                                                <button
+                                                    className="btn btn-primary"
+                                                    disabled={isCurrentBidByU || this.state.balance < newBid}
+                                                    onClick={() => {
+                                                        this.handleBid(newBid);
+                                                    }}>
+                                                    Bid {newBid} (+{bidDiff})
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <input
+                                                    className="form-control form-control-lg"
+                                                    placeholder="Enter Bid"
+                                                    ref={ref => {
+                                                        this.bidRef = ref;
+                                                    }}
+                                                />
+                                                <button
+                                                    className="btn btn-primary"
+                                                    disabled={secretBidDone}
+                                                    onClick={() => {
+                                                        this.handleSecretBid();
+                                                    }}>
+                                                    Bid
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ) : (

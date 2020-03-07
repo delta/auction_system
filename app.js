@@ -61,14 +61,21 @@ io.sockets.on('connection', socket => {
         const adminSocket = handleConnections.getAdminSocket(namespace);
         handleBiding.handleBid(io, socket, namespace, user_id, userName, bid_value, clientSocket, adminSocket);
     });
+
+    socket.on('newSecretBid', (namespace, user_id, userName, bid_value) => {
+        const clientSocket = handleConnections.getAllClientSockets(namespace)[user_id];
+        const adminSocket = handleConnections.getAdminSocket(namespace);
+        handleBiding.handleSecretBid(io, socket, namespace, user_id, userName, bid_value, clientSocket, adminSocket);
+    });
+
     socket.on('biddingStart', (namespace, owner_id, catalog) => {
         handleConnections.currentCatalog(socket, namespace, owner_id, catalog);
     });
     socket.on('biddingSkip', (owner_id, namespace, catalogName) => {
         handleConnections.skipBidding(io, socket, namespace, owner_id, catalogName);
     });
-    socket.on('biddingStop', (owner_id, namespace, catalogName) => {
-        handleConnections.stopBidding(io, socket, namespace, owner_id, catalogName);
+    socket.on('biddingStop', (owner_id, namespace, catalogName, isSecretBid) => {
+        handleConnections.stopBidding(io, socket, namespace, owner_id, catalogName, isSecretBid);
     });
     socket.on('disconnect', reason => {
         handleConnections.leaveAuction(socket, socket.user_id, socket.namespace);
@@ -82,7 +89,14 @@ io.sockets.on('connection', socket => {
     socket.on('deleteBids', (allBids, owner_id, namespace, catalog) => {
         handleBiding.deleteBids(io, socket, allBids, namespace, owner_id, catalog);
     });
+    socket.on('deleteSecretBids', (secretBids, deleteSecretBids, owner_id, namespace, catalog) => {
+        handleBiding.deleteSecretBids(io, socket, secretBids, deleteSecretBids, namespace, owner_id, catalog);
+    });
     socket.on('changeRegistrationStatus', namespace => {
         handleConnections.changeRegistrationStatus(io, socket, namespace);
+    });
+
+    socket.on('secretBidStatus', (owner_id, namespace, catalog, isSecretBid) => {
+        handleConnections.changeSecretBidStatus(io, socket, namespace, isSecretBid);
     });
 });

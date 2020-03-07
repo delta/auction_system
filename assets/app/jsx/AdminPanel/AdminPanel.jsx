@@ -32,10 +32,13 @@ class AdminPanel extends Component {
             password: '',
             pauseCatalog: '',
             allBids: [],
+            secretBids: [],
             deleteBid: [],
+            deleteSecretBids: [],
             autoPlay: false,
             currentIndex: -1,
-            currentCatalog: ''
+            currentCatalog: '',
+            isSecretBid: false
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -224,7 +227,10 @@ class AdminPanel extends Component {
                     sold,
                     start: '',
                     allBids: [],
-                    pauseCatalog: ''
+                    pauseCatalog: '',
+                    secretBids: [],
+                    deleteSecretBids: [],
+                    isSecretBid: false,
                 },
                 () => {
                     if (this.state.sold.length === this.state.catalogs.length) {
@@ -302,6 +308,12 @@ class AdminPanel extends Component {
         socket.on('allBids', bidDetails => {
             this.setState({
                 allBids: bidDetails.reverse()
+            });
+        });
+
+        socket.on('currentAllSecretBids', secretBids => {
+            this.setState({
+                secretBids: secretBids
             });
         });
 
@@ -421,16 +433,18 @@ class AdminPanel extends Component {
 
     markSold = (event, id, catalog) => {
         event.preventDefault();
-        const {sold, owner_id, url_slug: namespace} = this.state;
+        const {sold, owner_id, url_slug: namespace, isSecretBid} = this.state;
         if (sold.includes(id)) {
             return;
         }
-        socket.emit('biddingStop', owner_id, namespace, catalog);
+        socket.emit('biddingStop', owner_id, namespace, catalog, isSecretBid);
     };
+
     markBiddingStart = id => {
         this.setState(
             {
-                start: id
+                start: id,
+                isSecretBid: false
             },
             () => {
                 const {catalogs, start, url_slug, owner_id} = this.state;
@@ -453,6 +467,21 @@ class AdminPanel extends Component {
         });
         socket.emit('resumeBidding', owner_id, url_slug, catalog);
     };
+
+    startSecretBid = catalog => {
+        this.setState({isSecretBid: true}, () => {
+            const {owner_id, url_slug, isSecretBid} = this.state;
+            socket.emit('secretBidStatus', owner_id, url_slug, catalog, isSecretBid);
+        });
+    };
+
+    stopSecretBid = catalog => {
+        this.setState({isSecretBid: false}, () => {
+            const {owner_id, url_slug, isSecretBid} = this.state;
+            socket.emit('secretBidStatus', owner_id, url_slug, catalog, isSecretBid);
+        });
+    };
+
     deleteBid = (event, catalog) => {
         event.preventDefault();
         let {deleteBid, allBids, owner_id, url_slug} = this.state;
@@ -464,6 +493,19 @@ class AdminPanel extends Component {
             deleteBid: []
         });
         socket.emit('deleteBids', allBids, owner_id, url_slug, catalog);
+    };
+
+    deleteSecretBids = (event, catalog) => {
+        event.preventDefault();
+        let {deleteSecretBids, secretBids, owner_id, url_slug} = this.state;
+        deleteSecretBids.forEach(bid => {
+            secretBids = secretBids.filter(Bid => Bid.bidHolderId != bid);
+        });
+        this.setState({
+            secretBids,
+            deleteSecretBids: []
+        });
+        socket.emit('deleteSecretBids', secretBids, deleteSecretBids, owner_id, url_slug, catalog);
     };
     handleChecked = e => {
         let id = e.target.id;
@@ -478,6 +520,20 @@ class AdminPanel extends Component {
             deleteBid
         });
     };
+
+    handleSecretChecked = e => {
+        let id = e.target.id;
+        const {deleteSecretBids} = this.state;
+        let index = deleteSecretBids.indexOf(id);
+        if (index > -1) {
+            deleteSecretBids.splice(index, 1);
+        } else {
+            deleteSecretBids.push(id);
+        }
+        this.setState({
+            deleteSecretBids
+        });
+    };
     manageCatalog = () => {
         this.setState(
             {
@@ -490,6 +546,7 @@ class AdminPanel extends Component {
             }
         );
     };
+
     toggleAutoPlay = () => {
         this.setState({
             autoPlay: !this.state.autoPlay
@@ -538,7 +595,10 @@ class AdminPanel extends Component {
             pauseCatalog,
             allBids,
             deleteBid,
-            manageCatalog
+            manageCatalog,
+            isSecretBid,
+            secretBids,
+            deleteSecretBids
         } = this.state;
         if (q_type == 'add_config') {
             return (
@@ -702,46 +762,107 @@ class AdminPanel extends Component {
                                                                             : 'Pause'}
                                                                     </button>
                                                                     {pauseCatalog === catalog.id ? (
-                                                                        <button
-                                                                            className="btn btn-danger m-1"
-                                                                            disabled={start && start !== catalog.id}
-                                                                            onClick={event => {
-                                                                                this.deleteBid(event, catalog);
-                                                                            }}>
-                                                                            Delete
-                                                                        </button>
-                                                                    ) : (
-                                                                        <div />
-                                                                    )}
-                                                                    {pauseCatalog === catalog.id ? (
-                                                                        <button
-                                                                            className="btn btn-danger m-1"
-                                                                            disabled={start && start !== catalog.id}
-                                                                            onClick={() =>
-                                                                                this.markSold(
-                                                                                    event,
-                                                                                    catalog.id,
-                                                                                    catalog
-                                                                                )
-                                                                            }>
-                                                                            Sold
-                                                                        </button>
-                                                                    ) : (
-                                                                        <div />
-                                                                    )}
-                                                                    {pauseCatalog === catalog.id ? (
-                                                                        <button
-                                                                            className="btn btn-danger m-1"
-                                                                            disabled={pauseCatalog !== catalog.id}
-                                                                            onClick={() =>
-                                                                                this.markBiddingSkip(
-                                                                                    event,
-                                                                                    catalog.id,
-                                                                                    catalog.name
-                                                                                )
-                                                                            }>
-                                                                            Skip
-                                                                        </button>
+                                                                        <>
+                                                                            {!isSecretBid ? (
+                                                                                <>
+                                                                                    <button
+                                                                                        className="btn btn-danger m-1"
+                                                                                        disabled={
+                                                                                            start &&
+                                                                                            start !== catalog.id
+                                                                                        }
+                                                                                        onClick={event => {
+                                                                                            this.deleteBid(
+                                                                                                event,
+                                                                                                catalog
+                                                                                            );
+                                                                                        }}>
+                                                                                        Delete
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="btn btn-danger m-1"
+                                                                                        disabled={
+                                                                                            start &&
+                                                                                            start !== catalog.id
+                                                                                        }
+                                                                                        onClick={() =>
+                                                                                            this.markSold(
+                                                                                                event,
+                                                                                                catalog.id,
+                                                                                                catalog
+                                                                                            )
+                                                                                        }>
+                                                                                        Sold
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="btn btn-danger m-1"
+                                                                                        disabled={
+                                                                                            pauseCatalog !== catalog.id
+                                                                                        }
+                                                                                        onClick={() =>
+                                                                                            this.markBiddingSkip(
+                                                                                                event,
+                                                                                                catalog.id,
+                                                                                                catalog.name
+                                                                                            )
+                                                                                        }>
+                                                                                        Skip
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="btn btn-danger m-1"
+                                                                                        disabled={
+                                                                                            pauseCatalog !== catalog.id
+                                                                                        }
+                                                                                        onClick={() =>
+                                                                                            this.startSecretBid(catalog)
+                                                                                        }>
+                                                                                        Secret Bid
+                                                                                    </button>
+                                                                                </>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <button
+                                                                                        className="btn btn-danger m-1"
+                                                                                        disabled={
+                                                                                            pauseCatalog !== catalog.id
+                                                                                        }
+                                                                                        onClick={() =>
+                                                                                            this.stopSecretBid(catalog)
+                                                                                        }>
+                                                                                        Stop Secret Bid
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="btn btn-danger m-1"
+                                                                                        disabled={
+                                                                                            start &&
+                                                                                            start !== catalog.id
+                                                                                        }
+                                                                                        onClick={event => {
+                                                                                            this.deleteSecretBids(
+                                                                                                event,
+                                                                                                catalog
+                                                                                            );
+                                                                                        }}>
+                                                                                        Delete
+                                                                                    </button>
+                                                                                    <button
+                                                                                        className="btn btn-danger m-1"
+                                                                                        disabled={
+                                                                                            start &&
+                                                                                            start !== catalog.id
+                                                                                        }
+                                                                                        onClick={() =>
+                                                                                            this.markSold(
+                                                                                                event,
+                                                                                                catalog.id,
+                                                                                                catalog
+                                                                                            )
+                                                                                        }>
+                                                                                        Sold
+                                                                                    </button>
+                                                                                </>
+                                                                            )}
+                                                                        </>
                                                                     ) : (
                                                                         <div />
                                                                     )}
@@ -813,13 +934,18 @@ class AdminPanel extends Component {
                                                 {this.state.currentCatalog.base_price}
                                             </div>
                                         </div>
-                                        <h3>
-                                            CurrentBid:{' '}
-                                            {this.state.bid_value == this.state.currentCatalog.base_price
-                                                ? '-'
-                                                : this.state.bid_value}
-                                        </h3>
-                                        <h4>By: {this.state.bidHolderName}</h4>
+                                        {!isSecretBid?(
+                                            <>
+                                            <h3>
+                                                CurrentBid:{' '}
+                                                {this.state.bid_value == this.state.currentCatalog.base_price
+                                                    ? '-'
+                                                    : this.state.bid_value}
+                                            </h3>
+                                            <h4>By: {this.state.bidHolderName}</h4>
+                                            </>
+                                            ):
+                                            (<div/>)}
                                     </div>
                                 </div>
                             ) : (
@@ -827,35 +953,67 @@ class AdminPanel extends Component {
                             )}
                         </div>
 
-                        <div style={style.allBidsContainer}>
-                            {allBids.length > 1 && (
-                                <div className="row">
-                                    <div className="col-md-3 font-weight-bold text-center">Bid</div>
-                                    <div className="col-md-3 font-weight-bold text-center">Name</div>
-                                    <div className="col-md-6 font-weight-bold text-center">Delete</div>
-                                </div>
-                            )}
-                            {allBids &&
-                                allBids.map(
-                                    bid =>
-                                        bid.currentBid !== 0 && (
-                                            <div className="row">
-                                                <div className="col-md-3 text-center">{bid.currentBid}</div>
-                                                <div className="col-md-3 text-center">{bid.bidHolderName}</div>
-                                                <div className="col-md-6 text-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        name={`bidDelete&{bid.currentBid}`}
-                                                        checked={deleteBid.includes(bid.currentBid.toString())}
-                                                        onChange={e => this.handleChecked(e)}
-                                                        id={bid.currentBid}
-                                                        value={bid.currentBid}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )
+                        {isSecretBid ? (
+                            <div style={style.allBidsContainer}>
+                                {secretBids.length > 0 && (
+                                    <div className="row">
+                                        <div className="col-md-3 font-weight-bold text-center">Bid</div>
+                                        <div className="col-md-3 font-weight-bold text-center">Name</div>
+                                        <div className="col-md-6 font-weight-bold text-center">Delete</div>
+                                    </div>
                                 )}
-                        </div>
+                                {secretBids &&
+                                    secretBids.map(
+                                        bid =>
+                                            bid.currentBid !== 0 && (
+                                                <div className="row">
+                                                    <div className="col-md-3 text-center">{bid.currentBid}</div>
+                                                    <div className="col-md-3 text-center">{bid.bidHolderName}</div>
+                                                    <div className="col-md-6 text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`bidDelete&{bid.bidGolderId}`}
+                                                            checked={deleteSecretBids.includes(bid.bidHolderId.toString())}
+                                                            onChange={e => this.handleSecretChecked(e)}
+                                                            id={bid.bidHolderId}
+                                                            value={bid.bidHolderId}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )
+                                    )}
+                            </div>
+                        ) : (
+                            <div style={style.allBidsContainer}>
+                                {allBids.length > 1 && (
+                                    <div className="row">
+                                        <div className="col-md-3 font-weight-bold text-center">Bid</div>
+                                        <div className="col-md-3 font-weight-bold text-center">Name</div>
+                                        <div className="col-md-6 font-weight-bold text-center">Delete</div>
+                                    </div>
+                                )}
+                                {allBids &&
+                                    allBids.map(
+                                        bid =>
+                                            bid.currentBid !== 0 && (
+                                                <div className="row">
+                                                    <div className="col-md-3 text-center">{bid.currentBid}</div>
+                                                    <div className="col-md-3 text-center">{bid.bidHolderName}</div>
+                                                    <div className="col-md-6 text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            name={`bidDelete&{bid.currentBid}`}
+                                                            checked={deleteBid.includes(bid.currentBid.toString())}
+                                                            onChange={e => this.handleChecked(e)}
+                                                            id={bid.currentBid}
+                                                            value={bid.currentBid}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )
+                                    )}
+                            </div>
+                        )}
                     </div>
 
                     <div style={style.activeUsersContainer}>

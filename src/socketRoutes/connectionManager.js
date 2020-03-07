@@ -5,11 +5,11 @@ const bidManager = require('./bidManager');
 let adminSockets = {}; // {"admin1": {socket, id}, "admin2": {socket, id}};
 let clientSockets = {}; // {"room1": {"u1": socket, "u2": socket}, "room2": {"u3": socket}}
 
-const getAllClientSockets = namespace => {
+function getAllClientSockets (namespace) {
     return clientSockets[namespace];
 };
 
-const getAdminSocket = namespace => {
+function getAdminSocket (namespace) {
     return adminSockets[namespace].socket;
 };
 
@@ -23,7 +23,8 @@ function ownerSocket(socket, config) {
         max_user: config.max_user,
         is_open: config.is_open,
         can_register: config.can_register,
-        paused: false
+        paused: false,
+        secretBid: false
     };
     //add a entry in clientSockets for owner's room
     clientSockets[namespace] = {};
@@ -57,8 +58,15 @@ function skipBidding(io, socket, namespace, user_id, catalogName) {
     bidManager.resetBid(io, namespace, '-', -1, 0);
 }
 
-function stopBidding(io, socket, namespace, user_id, catalog) {
-    const bidDetails = bidManager.getCurrentBid(namespace);
+function stopBidding(io, socket, namespace, user_id, catalog, isSecretBid) {
+    
+    let bidDetails = {};
+    
+    if(!isSecretBid){
+        bidDetails = bidManager.getCurrentBid(namespace);
+    }else {
+        bidDetails = bidManager.getHighestSecretBid(namespace);
+    }
 
     let clientSocket = clientSockets[namespace][bidDetails.bidHolderId];
 
@@ -131,6 +139,11 @@ function resumeBidding(io, socket, namespace) {
     socket.broadcast.to(namespace).emit('resumeBidding');
 }
 
+function changeSecretBidStatus(io, socket, namespace, isSecretBid) {
+    adminSockets[namespace].secretBid = isSecretBid;
+    socket.broadcast.to(namespace).emit('secretBidStatus', isSecretBid);
+}
+
 function changeRegistrationStatus(io, socket, namespace) {
     adminSockets[namespace].can_register = !adminSockets[namespace].can_register;
 }
@@ -187,7 +200,15 @@ function joinAuction(socket, namespace, user_id) {
                     //add client to auction room
                     socket.join(namespace);
 
-                    socket.emit('joinedSuccessful', adminSockets[namespace].paused, socket.balance);
+                    let hasSecretBid = bidManager.hasSecretBid(namespace, user_id);
+
+                    socket.emit(
+                        'joinedSuccessful',
+                        adminSockets[namespace].paused,
+                        socket.balance,
+                        adminSockets[namespace].secretBid,
+                        hasSecretBid
+                    );
                     socket.emit('currentCatalog', adminSockets[namespace].currentCatalog);
                     // send current bidDetails to this newly added client
                     bidManager.showCurrentBid(socket, namespace);
@@ -226,5 +247,6 @@ module.exports = {
     skipBidding,
     changeRegistrationStatus,
     getAllClientSockets,
-    getAdminSocket
+    getAdminSocket,
+    changeSecretBidStatus
 };
