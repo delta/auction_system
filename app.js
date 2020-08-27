@@ -13,7 +13,7 @@ const WEBPACK_ASSETS_URL = 'http://localhost:8080';
 
 if (app.get('env') == 'production') {
     var assets_names = JSON.parse(fs.readFileSync(__dirname + '/assets/webpack-assets.json', 'utf8'));
-    var scripts = [assets_names.commonChunk.js, assets_names.app.js];
+    var scripts = [assets_names.app.js];
 } else {
     var scripts = [WEBPACK_ASSETS_URL + '/build/app.js'];
 }
