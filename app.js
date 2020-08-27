@@ -11,7 +11,7 @@ app.use('/build', express.static('public/build'));
 
 const WEBPACK_ASSETS_URL = 'http://localhost:8080';
 
-if (app.get('env') != 'development') {
+if (app.get('env') == 'production') {
     var assets_names = JSON.parse(fs.readFileSync(__dirname + '/assets/webpack-assets.json', 'utf8'));
     var scripts = [assets_names.commonChunk.js, assets_names.app.js];
 } else {
@@ -32,6 +32,9 @@ app.get('/*', function(req, res) {
 const server = app.listen(4000, function() {
     console.log('App listening on port 4000!');
 });
+
+module.exports = server;
+
 db.sequelize
     .sync({
         force: false
