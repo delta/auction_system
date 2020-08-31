@@ -1,6 +1,6 @@
 const webpack = require('webpack');
 const AssetsPlugin = require('assets-webpack-plugin');
-const UglifyJSPlugin = require('uglifyjs-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = (env, options) => {
     const outputFileName = options.mode === 'development' ? '[name].js' : '[name]-[chunkhash].js';
@@ -18,7 +18,7 @@ module.exports = (env, options) => {
             rules: [
                 {
                     test: /\.(js|jsx)$/,
-                    // exclude: /node_modules/,
+                    exclude: /(node_modules)/,
                     loader: 'babel-loader',
                     options: {
                         presets: [
@@ -47,12 +47,11 @@ module.exports = (env, options) => {
         ],
         optimization: {
             minimizer: [
-                new UglifyJSPlugin({
-                    uglifyOptions: {
-                        compress: {
-                            drop_console: true
-                        }
-                    }
+                new TerserPlugin({
+                    parallel: true,
+                    terserOptions: {
+                        ecma: 6,
+                    },
                 })
             ]
         }

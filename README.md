@@ -72,6 +72,11 @@ When you install a new dependency always use ```--save```
 $ npm install --save <package_name>
 ```
 
+Make sure to run tests before pushing any changes...
+```sh
+$ npm run test
+```
+
 Before committing your work, reformat the files...
 ```sh
 $ npm run fmt
