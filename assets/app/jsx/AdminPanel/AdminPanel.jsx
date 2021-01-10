@@ -1,14 +1,17 @@
+
 import React, {Component} from 'react';
 import dataFetch from '../DataFetch';
 import {Form, Field} from 'react-final-form';
 import io from 'socket.io-client';
 import {notifyError, notifySuccess} from '../../Common/common.js';
+import axios from 'axios';
+import ReactPaginate from 'react-paginate';
 import {ToastContainer} from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Swal from 'sweetalert2';
-import ManageCatalog from '../ManageCatalog.jsx';
+import {Filter, ManageCatalog} from '../ManageCatalog.jsx';
 import {style} from './style';
-
+import Pagination from './createPagination';
 let socket;
 
 class AdminPanel extends Component {
@@ -38,7 +41,11 @@ class AdminPanel extends Component {
             autoPlay: false,
             currentIndex: -1,
             currentCatalog: '',
-            isSecretBid: false
+            isSecretBid: false ,
+            posts: [],
+            currentPage: 1,
+            postsPerPage: 7,
+
         };
         this.onSubmit = this.onSubmit.bind(this);
         this.openAuction = this.openAuction.bind(this);
@@ -122,6 +129,7 @@ class AdminPanel extends Component {
                 notifyError('' + err.response);
             });
     };
+
     getCatalog = data => {
         if (this.state.is_open) {
             data.isAuthRequired = true;
@@ -598,13 +606,31 @@ class AdminPanel extends Component {
             manageCatalog,
             isSecretBid,
             secretBids,
-            deleteSecretBids
+            deleteSecretBids,
+            postsPerPage,
+            currentPage
         } = this.state;
+        const indexOfLastPost= currentPage*postsPerPage;
+        const indexOfFirstPost =indexOfLastPost - postsPerPage;
+       const filterData=catalogs.filter(
+        catalog =>{
+          if(this.state.filterString != undefined){
+         return  catalog.name.includes(
+              this.state.filterString)
+            } else {
+              return true
+            }
+        }
+      );
+       const currentPost = filterData.slice(indexOfFirstPost , indexOfLastPost);
+       console.log(currentPost,catalogs.length,indexOfFirstPost , indexOfLastPost);
+       console.log(catalogs);
+       const paginate = pageNumber => this.setState({currentPage:pageNumber});
         if (q_type == 'add_config') {
             return (
                 <div>
                     <div className="container" style={style.formBox}>
-                        <h2>AdminPanel :)</h2>
+                    <h2>AdminPanel :)</h2>
                         <Form
                             onSubmit={this.onSubmit}
                             initialValues={{
@@ -719,7 +745,13 @@ class AdminPanel extends Component {
                             />
                             Registration Status
                         </div>
+                        <div>
+                        <Filter onTextChange={
+                          text=> this.setState({filterString : text})
+                        }/>
+                        </div>
                     </div>
+
                     <div style={style.topContainer}>
                         <div style={style.catalogsContainer}>
                             {this.state.is_open && (
@@ -729,7 +761,8 @@ class AdminPanel extends Component {
                                         <div className="col-md-3 font-weight-bold text-center">Price</div>
                                         <div className="col-md-6 font-weight-bold text-center">Status</div>
                                     </div>
-                                    {catalogs.map(catalog => (
+
+                                    {currentPost.map(catalog => (
                                         <>
                                             <div className="row mb-1" key={catalog.id}>
                                                 <div className="col-md-3 p-2 text-center">{catalog.name}</div>
@@ -934,7 +967,8 @@ class AdminPanel extends Component {
                                                 {this.state.currentCatalog.base_price}
                                             </div>
                                         </div>
-                                        {!isSecretBid ? (
+                                        {!isSecretBid
+                                           ? (
                                             <>
                                                 <h3>
                                                     CurrentBid:{' '}
@@ -1018,7 +1052,9 @@ class AdminPanel extends Component {
                     </div>
 
                     <div style={style.activeUsersContainer}>
-                        <h5>
+                    <div className="row">
+                    <Pagination className= "col-md-3" postsPerPage={postsPerPage} totalPosts = {catalogs.length} paginate={paginate}/>
+                        <h5 className="col-md-12">
                             Active Users: {clientIds.length}/{max_users}
                         </h5>
                         <div style={style.usersGrid}>
@@ -1036,6 +1072,7 @@ class AdminPanel extends Component {
                                     </div>
                                 ))}
                         </div>
+                    </div>
                     </div>
                 </div>
             );

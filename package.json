@@ -16,6 +16,7 @@
   },
   "author": "Delta Force",
   "dependencies": {
+    "axios": "^0.21.1",
     "body-parser": "^1.19.0",
     "cookie-parser": "^1.4.3",
     "cookie-session": "^2.0.0-beta.3",
@@ -28,8 +29,10 @@
     "react": "^16.3.1",
     "react-dom": "^16.6.0",
     "react-final-form": "^6.3.0",
+    "react-paginate": "^7.0.0",
     "react-router": "^5.1.2",
     "react-router-dom": "^5.1.2",
+    "react-search-field": "^1.2.0",
     "react-toastify": "^5.5.0",
     "sequelize": "^5.21.2",
     "socket.io": "^2.3.0",

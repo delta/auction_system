@@ -2,10 +2,23 @@ import React, {Component} from 'react';
 import dataFetch from './DataFetch';
 import {notifySuccess, notifyError} from '../Common/common';
 import {Form, Field} from 'react-final-form';
+
+class Filter extends Component{
+  render()
+  {
+    return(
+       <div >
+       <img/>
+       <input type='text' placeholder= 'search catalog here' onKeyDown={event =>this.props.onTextChange(event.target.value)}/>
+       </div>
+    );
+  }
+}
 class ManageCatalog extends Component {
     state = {
         selectedCatalog: {},
-        updateType: ''
+        updateType: '',
+        filterString: ''
     };
     deleteCatalog = id => {
         let data = {id: id};
@@ -84,7 +97,7 @@ class ManageCatalog extends Component {
             dataFetch('/createCatalog', data)
                 .then(response => {
                     if (response.status_code == '200') {
-                        notifySuccess('Successfully Created');
+                        notifySuccess('Successfully Created catalog');
                         this.setState(
                             {
                                 updateType: ''
@@ -131,6 +144,11 @@ class ManageCatalog extends Component {
             <div className="">
                 <div className="row mb-5">
                     <div className="col-md-12 d-flex justify-content-end">
+                    <div  className ="col-md-6">
+                    <Filter onTextChange={
+                      text=> this.setState({filterString : text})
+                    }/>
+                    </div>
                         <button className="createNew btn btn-primary" onClick={this.addCatalog}>
                             Add Catalog
                         </button>
@@ -145,7 +163,19 @@ class ManageCatalog extends Component {
                             <div className="col-md-6 font-weight-bold text-center">Status</div>
                         </div>
                         {catalogs &&
-                            catalogs.map(catalog => (
+                            catalogs
+                            .filter(
+                            Catalog =>{
+
+                              if(this.state.filterString != undefined){
+                             return  Catalog.name.includes(
+                                  this.state.filterString)
+                                } else {
+                                  return true
+                                }
+
+                            }
+                            ).map(catalog => (
                                 <div className="row" key={catalog.id}>
                                     <div className="col-md-3 m-1 text-center">{catalog.name}</div>
                                     <div className="col-md-3 m-1 text-center">{catalog.base_price}</div>
@@ -304,4 +334,4 @@ class ManageCatalog extends Component {
     }
 }
 
-export default ManageCatalog;
+export {Filter,ManageCatalog};
